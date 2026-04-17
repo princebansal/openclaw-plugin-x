@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "openclaw-plugin-x",
+  "name": "OpenClaw X Plugin",
+  "version": "0.1.1",
+  "description": "Tool-oriented OpenClaw plugin for draft-first X/Twitter account management.",
+  "entry": "dist/plugin-entry.js",
+  "tools": [
+    "x.account.connect",
+    "x.account.auth_url",
+    "x.account.complete",
+    "x.account.me",
+    "x.post.create",
+    "x.post.reply",
+    "x.post.quote",
+    "x.post.thread",
+    "x.post.approve",
+    "x.post.publish",
+    "x.media.upload",
+    "x.timeline.mentions",
+    "x.timeline.me",
+    "x.post.get",
+    "x.post.context",
+    "x.engagement.like",
+    "x.engagement.repost",
+    "x.engagement.bookmark",
+    "x.util.resolve_url"
+  ],
+  "notes": [
+    "Manifest reflects the current router/tool surface but still needs end-to-end validation in a live OpenClaw plugin loader.",
+    "Draft creation and approval are dry-run-safe; x.post.publish performs a real X write when invoked with a valid approved draft and user token."
+  ]
+}

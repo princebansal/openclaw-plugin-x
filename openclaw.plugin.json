@@ -1,0 +1,88 @@
+{
+  "id": "openclaw-plugin-x",
+  "name": "OpenClaw X Plugin",
+  "description": "Draft-first X/Twitter management plugin for OpenClaw with OAuth, reads, durable drafts, approval, and guarded publish.",
+  "version": "0.1.1",
+  "entry": "dist/plugin-entry.js",
+  "skills": [],
+  "contracts": {
+    "tools": [
+      "x_account_connect",
+      "x_account_auth_url",
+      "x_account_complete",
+      "x_account_me",
+      "x_post_create",
+      "x_post_reply",
+      "x_post_quote",
+      "x_post_thread",
+      "x_post_approve",
+      "x_post_publish",
+      "x_media_upload",
+      "x_timeline_mentions",
+      "x_timeline_me",
+      "x_post_get",
+      "x_post_context",
+      "x_engagement_like",
+      "x_engagement_repost",
+      "x_engagement_bookmark",
+      "x_util_resolve_url"
+    ]
+  },
+  "uiHints": {
+    "clientId": {
+      "label": "X Client ID"
+    },
+    "clientSecret": {
+      "label": "X Client Secret",
+      "sensitive": true
+    },
+    "redirectUri": {
+      "label": "OAuth Redirect URI"
+    },
+    "bearerToken": {
+      "label": "X Bearer Token",
+      "sensitive": true,
+      "advanced": true
+    },
+    "accessToken": {
+      "label": "X Access Token",
+      "sensitive": true,
+      "advanced": true
+    },
+    "refreshToken": {
+      "label": "X Refresh Token",
+      "sensitive": true,
+      "advanced": true
+    },
+    "draftsFilePath": {
+      "label": "Draft store path",
+      "advanced": true
+    },
+    "sessionFilePath": {
+      "label": "Session store path",
+      "advanced": true
+    },
+    "approvalMode": {
+      "label": "Approval mode",
+      "advanced": true
+    }
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "apiBaseUrl": { "type": "string" },
+      "uploadApiBaseUrl": { "type": "string" },
+      "clientId": { "type": "string" },
+      "clientSecret": { "type": "string" },
+      "redirectUri": { "type": "string" },
+      "bearerToken": { "type": "string" },
+      "accessToken": { "type": "string" },
+      "refreshToken": { "type": "string" },
+      "userId": { "type": "string" },
+      "approvalMode": { "type": "string", "enum": ["always"] },
+      "draftsFilePath": { "type": "string" },
+      "sessionFilePath": { "type": "string" }
+    }
+  }
+}
