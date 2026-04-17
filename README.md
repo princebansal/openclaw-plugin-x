@@ -110,6 +110,12 @@ Defaults exist, but may be overridden when needed:
 - `X_DRAFTS_FILE_PATH`
 - `X_SESSION_FILE_PATH`
 
+Important: do not point `X_SESSION_FILE_PATH` or `X_DRAFTS_FILE_PATH` inside the plugin install directory under `~/.openclaw/extensions/...`. OpenClaw plugin updates replace that directory and will wipe plugin-local files stored there.
+
+Recommended stable paths:
+- `X_SESSION_FILE_PATH=~/.openclaw/state/openclaw-plugin-x/session.json`
+- `X_DRAFTS_FILE_PATH=~/.openclaw/state/openclaw-plugin-x/drafts.json`
+
 Typical scope set now includes:
 - `tweet.read`
 - `tweet.write`
