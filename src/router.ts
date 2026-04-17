@@ -419,25 +419,26 @@ async function fetchAuthenticatedMe(config: ReturnType<typeof loadAccountConfig>
 }
 
 async function ensureFreshSession(config: ReturnType<typeof loadAccountConfig>, session?: ReturnType<typeof getSession>) {
-  if (!session) return session;
-  if (!session.refreshToken) return session;
-  if (!session.expiresAt) return session;
+  const current = session ?? getSession(config.sessionFilePath);
+  if (!current) return current;
+  if (!current.refreshToken) return current;
+  if (!current.expiresAt) return current;
 
-  const expiresAtMs = Date.parse(session.expiresAt);
-  if (!Number.isFinite(expiresAtMs)) return session;
+  const expiresAtMs = Date.parse(current.expiresAt);
+  if (!Number.isFinite(expiresAtMs)) return current;
 
   const msUntilExpiry = expiresAtMs - Date.now();
   if (msUntilExpiry > 5 * 60 * 1000) {
-    return session;
+    return current;
   }
 
   const refreshed = await refreshAccessToken({
     config,
-    refreshToken: session.refreshToken,
+    refreshToken: current.refreshToken,
   });
 
   const next = finalizeSession({
-    existing: session,
+    existing: current,
     token: refreshed,
   });
   setSession(config.sessionFilePath, next);
