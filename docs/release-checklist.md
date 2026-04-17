@@ -5,7 +5,7 @@ Use this before any public npm/plugin-manifest/ClawHub-style release.
 ## 1. Metadata and packaging
 - [ ] `package.json` version is intentional
 - [ ] `package.json` description matches actual capabilities
-- [ ] packaged files include `dist`, manifests, `README.md`, `.env.example`, and `LICENSE`
+- [ ] packaged files include `dist`, manifests, `README.md`, `env.example`, and `LICENSE`
 - [ ] `openclaw.plugin.json` version matches `package.json`
 - [ ] `plugin.manifest.json` version matches `package.json`
 - [ ] tool names in manifests match the implemented router surface

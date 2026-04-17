@@ -87,7 +87,7 @@ Before public publication, do one more install/load validation from the packed a
 
 ### Example env bring-up
 ```bash
-cp .env.example .env
+cp env.example .env
 npm run build
 ```
 
