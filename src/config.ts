@@ -11,25 +11,25 @@ const DEFAULT_DRAFTS_FILE_PATH = path.resolve(process.cwd(), '.openclaw-x-drafts
 const DEFAULT_SESSION_FILE_PATH = path.resolve(process.cwd(), '.openclaw-x-session.json');
 const DEFAULT_SCOPES = ['tweet.read', 'tweet.write', 'users.read', 'offline.access', 'media.write'];
 
-export function loadAccountConfig(env: NodeJS.ProcessEnv = process.env): AccountConfig {
+export function loadAccountConfig(overrides: Partial<AccountConfig> = {}): AccountConfig {
   const config: AccountConfig = {
-    apiBaseUrl: env.X_API_BASE_URL?.trim() || DEFAULT_X_API_BASE_URL,
-    uploadApiBaseUrl: env.X_UPLOAD_API_BASE_URL?.trim() || DEFAULT_X_UPLOAD_API_BASE_URL,
-    oauthAuthorizeUrl: env.X_OAUTH_AUTHORIZE_URL?.trim() || DEFAULT_X_OAUTH_AUTHORIZE_URL,
-    oauthTokenUrl: env.X_OAUTH_TOKEN_URL?.trim() || DEFAULT_X_OAUTH_TOKEN_URL,
-    scopes: env.X_OAUTH_SCOPES?.split(',').map((part) => part.trim()).filter(Boolean) || DEFAULT_SCOPES,
+    apiBaseUrl: overrides.apiBaseUrl?.trim() || DEFAULT_X_API_BASE_URL,
+    uploadApiBaseUrl: overrides.uploadApiBaseUrl?.trim() || DEFAULT_X_UPLOAD_API_BASE_URL,
+    oauthAuthorizeUrl: overrides.oauthAuthorizeUrl?.trim() || DEFAULT_X_OAUTH_AUTHORIZE_URL,
+    oauthTokenUrl: overrides.oauthTokenUrl?.trim() || DEFAULT_X_OAUTH_TOKEN_URL,
+    scopes: overrides.scopes?.length ? overrides.scopes : DEFAULT_SCOPES,
     approvalMode: 'always',
-    draftsFilePath: env.X_DRAFTS_FILE_PATH?.trim() || DEFAULT_DRAFTS_FILE_PATH,
-    sessionFilePath: env.X_SESSION_FILE_PATH?.trim() || DEFAULT_SESSION_FILE_PATH,
+    draftsFilePath: overrides.draftsFilePath?.trim() || DEFAULT_DRAFTS_FILE_PATH,
+    sessionFilePath: overrides.sessionFilePath?.trim() || DEFAULT_SESSION_FILE_PATH,
   };
 
-  if (env.X_CLIENT_ID) config.clientId = env.X_CLIENT_ID;
-  if (env.X_CLIENT_SECRET) config.clientSecret = env.X_CLIENT_SECRET;
-  if (env.X_REDIRECT_URI) config.redirectUri = env.X_REDIRECT_URI;
-  if (env.X_BEARER_TOKEN) config.bearerToken = env.X_BEARER_TOKEN;
-  if (env.X_ACCESS_TOKEN) config.accessToken = env.X_ACCESS_TOKEN;
-  if (env.X_REFRESH_TOKEN) config.refreshToken = env.X_REFRESH_TOKEN;
-  if (env.X_USER_ID) config.userId = env.X_USER_ID;
+  if (overrides.clientId?.trim()) config.clientId = overrides.clientId.trim();
+  if (overrides.clientSecret?.trim()) config.clientSecret = overrides.clientSecret.trim();
+  if (overrides.redirectUri?.trim()) config.redirectUri = overrides.redirectUri.trim();
+  if (overrides.bearerToken?.trim()) config.bearerToken = overrides.bearerToken.trim();
+  if (overrides.accessToken?.trim()) config.accessToken = overrides.accessToken.trim();
+  if (overrides.refreshToken?.trim()) config.refreshToken = overrides.refreshToken.trim();
+  if (overrides.userId?.trim()) config.userId = overrides.userId.trim();
 
   return config;
 }

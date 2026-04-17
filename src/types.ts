@@ -22,6 +22,7 @@ export type XAction =
 export interface ToolRequest<TInput = unknown> {
   action: XAction;
   input: TInput;
+  pluginConfig?: Partial<AccountConfig> | undefined;
 }
 
 export interface ToolSuccess<TData = unknown> {

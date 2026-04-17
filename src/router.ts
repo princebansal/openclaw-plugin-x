@@ -28,7 +28,7 @@ function fail(action: XAction, error: unknown, dryRun = true, warnings: string[]
 
 export async function routeToolRequest(request: ToolRequest): Promise<ToolResponse> {
   try {
-    const baseConfig = loadAccountConfig();
+    const baseConfig = loadAccountConfig(request.pluginConfig ?? {});
     const session = getSession(baseConfig.sessionFilePath);
     const config = withSessionTokens(baseConfig, session);
     const client = new XApiHttpClient(config);

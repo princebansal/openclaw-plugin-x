@@ -51,7 +51,9 @@ Approval remains mandatory by design.
 ## Requirements
 - Node.js 22+
 - OpenClaw version compatible with the package metadata in `package.json`
-- X developer app credentials for OAuth-based account access
+- Your own X developer app credentials for OAuth-based account access
+
+Important: this plugin is generic, but OAuth is not shared. Each user installing the plugin should configure their own X developer app credentials. The auth URL is generated from the credentials configured in that user's OpenClaw runtime, not from a generic shared app.
 
 ## Install
 
