@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-04-03
+Last updated: 2026-04-21
 
 ## Proven working
 - `npm run check` passes.
@@ -21,6 +21,7 @@ Last updated: 2026-04-03
   - `x.post.thread`
 - Approval recording exists via `x.post.approve`.
 - Guarded live publish works for approved single-post drafts via `x.post.publish`.
+- Guarded live publish works for approved thread drafts via `x.post.publish`, chaining each subsequent post as a reply to the previous post.
 - Media upload works through the chunked v2 media upload flow.
 - Media-backed draft creation works.
 - Media-backed publish has been proven live.
@@ -29,7 +30,7 @@ Last updated: 2026-04-03
 ## Partially complete / still rough
 - Automatic OAuth callback HTTP handling is still not implemented.
 - Engagement actions return plans only; they do not call X.
-- Thread drafts are not publishable yet; only single-post drafts can be published.
+- Thread publish has working runtime logic and live proof, but first-class tool/runtime reload behavior still needs one clean validation pass from a fully reinstalled packaged build.
 - Deeper multi-hop thread/context expansion is still limited.
 - Public-release polish (install docs, tests, release checklist quality) still needs a cleanup pass.
 
@@ -40,5 +41,5 @@ The following older caveats are now outdated:
 - native plugin entrypoint is no longer just hypothetical
 
 ## Current honest line
-This plugin is functionally real for the core single-account X management loop.
-It is not yet polished enough to be published publicly without a deliberate release-prep pass.
+This plugin is functionally real for the core single-account X management loop, including thread publishing.
+It is still worth treating as an early but usable release, with one remaining focus area around clean packaged-runtime validation.

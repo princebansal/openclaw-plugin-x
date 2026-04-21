@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "openclaw-plugin-x",
   "name": "OpenClaw X Plugin",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Tool-oriented OpenClaw plugin for draft-first X/Twitter account management.",
   "entry": "dist/plugin-entry.js",
   "tools": [

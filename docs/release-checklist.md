@@ -44,6 +44,7 @@ Use this before any public npm/plugin-manifest/ClawHub-style release.
 - [ ] `x_post_thread` creates a durable thread draft
 - [ ] `x_post_approve`
 - [ ] `x_post_publish` succeeds for an approved single-post draft
+- [ ] `x_post_publish` succeeds for an approved thread draft
 
 ## 7. Media smoke test
 - [ ] `x_media_upload` succeeds for a representative file
@@ -53,7 +54,7 @@ Use this before any public npm/plugin-manifest/ClawHub-style release.
 ## 8. Honesty check before release
 - [ ] README does not imply automatic OAuth callback support
 - [ ] README does not imply live engagement actions exist
-- [ ] README does not imply thread publish exists
+- [ ] README describes thread publish honestly and does not overstate its validation level
 - [ ] implementation-status docs still match reality
 - [ ] known limitations are still accurate
 

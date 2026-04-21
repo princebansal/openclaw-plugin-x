@@ -100,7 +100,7 @@ export function approveDraftRecord(
   return updated;
 }
 
-export function publishDraftRecord(filePath: string, draftId: string, published: { postId: string; url: string; publishedAt?: string }): DraftRecord {
+export function publishDraftRecord(filePath: string, draftId: string, published: { postId: string; url: string; publishedAt?: string; threadPostIds?: string[]; threadUrls?: string[] }): DraftRecord {
   const store = ensureStore(filePath);
   const index = store.drafts.findIndex((draft) => draft.id === draftId);
   if (index === -1) {
@@ -118,6 +118,8 @@ export function publishDraftRecord(filePath: string, draftId: string, published:
       postId: published.postId,
       url: published.url,
       publishedAt: published.publishedAt ?? new Date().toISOString(),
+      ...(published.threadPostIds?.length ? { threadPostIds: published.threadPostIds } : {}),
+      ...(published.threadUrls?.length ? { threadUrls: published.threadUrls } : {}),
     },
   };
 

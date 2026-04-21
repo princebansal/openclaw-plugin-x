@@ -123,6 +123,8 @@ export interface DraftRecord {
     postId: string;
     url: string;
     publishedAt: string;
+    threadPostIds?: string[] | undefined;
+    threadUrls?: string[] | undefined;
   } | undefined;
 }
 

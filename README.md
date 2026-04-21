@@ -7,10 +7,10 @@ This package has been proven locally for the core single-account workflow:
 - authenticated reads
 - durable local drafts
 - explicit approval recording
-- approval-gated single-post publish
+- approval-gated publish for single posts and threads
 - media upload and media-backed publish
 
-It is **real**, but it is **not fully productized** yet. The main remaining gaps are release polish, install/load validation in a public-facing runtime path, automatic OAuth callback handling, and thread publish.
+It is **real**, but it is **not fully productized** yet. The main remaining gaps are release polish, install/load validation in a public-facing runtime path, and automatic OAuth callback handling.
 
 ## Current status
 
@@ -27,7 +27,7 @@ It is **real**, but it is **not fully productized** yet. The main remaining gaps
 - `x_post_quote`
 - `x_post_thread` as durable draft creation
 - `x_post_approve`
-- `x_post_publish` for approved single-post drafts
+- `x_post_publish` for approved single-post drafts and approved thread drafts
 - `x_media_upload`
 - media-backed single-post publish
 - X/Twitter post URL resolution
@@ -35,7 +35,6 @@ It is **real**, but it is **not fully productized** yet. The main remaining gaps
 ### Not done yet
 - automatic OAuth callback HTTP handling inside OpenClaw
 - live engagement actions for like / repost / bookmark
-- thread publish
 - deeper conversation expansion beyond immediate referenced posts
 - broader public-release validation beyond local/manual QA
 
@@ -44,7 +43,7 @@ It is **real**, but it is **not fully productized** yet. The main remaining gaps
 This plugin is intentionally draft-first:
 - create/reply/quote/thread actions create stored drafts
 - `x_post_approve` records explicit approval
-- `x_post_publish` only performs a live write for an already-approved single-post draft with valid user credentials
+- `x_post_publish` only performs a live write for an already-approved draft with valid user credentials
 
 Approval remains mandatory by design.
 
@@ -185,8 +184,7 @@ This plugin is designed to pair with an agent-side skill such as `x-management` 
 - plugin drafts are local plugin drafts, not X-native drafts shown in X apps
 - OAuth completion is currently manual; automatic callback handling is not implemented
 - engagement actions are plan-only today
-- only approved single-post drafts can be published live today
-- thread drafts are stored, but thread publish is not implemented
+- only approved drafts can be published live today
 - public install/load validation still needs one clean pass from the distributable artifact
 
 ## Release notes for maintainers

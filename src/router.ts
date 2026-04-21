@@ -234,41 +234,99 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           });
         }
 
-        if (!draft.draft) {
-          throw new XPluginError('VALIDATION_ERROR', 'Only single-post drafts are publishable right now.', {
-            details: { draftId: input.draftId, intent: draft.intent },
+        if (draft.draft) {
+          const response = await publishClient.request<{ data?: { id?: string; text?: string } }>({
+            method: 'POST',
+            path: '/2/tweets',
+            authMode: 'user',
+            body: buildCreatePostBody(draft.draft),
           });
-        }
 
-        const response = await publishClient.request<{ data?: { id?: string; text?: string } }>({
-          method: 'POST',
-          path: '/2/tweets',
-          authMode: 'user',
-          body: buildCreatePostBody(draft.draft),
-        });
+          const postId = response.data?.id;
+          if (!postId) {
+            throw new XPluginError('API_ERROR', 'Publish succeeded without returning a post id.', {
+              details: { response },
+            });
+          }
 
-        const postId = response.data?.id;
-        if (!postId) {
-          throw new XPluginError('API_ERROR', 'Publish succeeded without returning a post id.', {
-            details: { response },
-          });
-        }
-
-        const published = publishDraftRecord(config.draftsFilePath, input.draftId, {
-          postId,
-          url: `https://x.com/${effectiveSession?.username ?? 'i'}/status/${postId}`,
-          publishedAt: new Date().toISOString(),
-        });
-
-        return ok(request.action, {
-          draftId: input.draftId,
-          published,
-          result: {
+          const published = publishDraftRecord(config.draftsFilePath, input.draftId, {
             postId,
-            url: published.published?.url,
-            text: response.data?.text ?? draft.draft.text,
-          },
-        }, false);
+            url: `https://x.com/${effectiveSession?.username ?? 'i'}/status/${postId}`,
+            publishedAt: new Date().toISOString(),
+          });
+
+          return ok(request.action, {
+            draftId: input.draftId,
+            published,
+            result: {
+              postId,
+              url: published.published?.url,
+              text: response.data?.text ?? draft.draft.text,
+            },
+          }, false);
+        }
+
+        if (draft.thread?.length) {
+          const threadPostIds: string[] = [];
+          const threadUrls: string[] = [];
+          const results: Array<{ index: number; postId: string; url: string; text: string }> = [];
+          let previousPostId: string | undefined;
+
+          for (const [index, post] of draft.thread.entries()) {
+            const response = await publishClient.request<{ data?: { id?: string; text?: string } }>({
+              method: 'POST',
+              path: '/2/tweets',
+              authMode: 'user',
+              body: buildCreatePostBody({
+                ...post,
+                ...(previousPostId ? { replyToPostId: previousPostId } : {}),
+              }),
+            });
+
+            const postId = response.data?.id;
+            if (!postId) {
+              throw new XPluginError('API_ERROR', 'Thread publish succeeded without returning a post id.', {
+                details: { response, draftId: input.draftId, index: index + 1 },
+              });
+            }
+
+            const url = `https://x.com/${effectiveSession?.username ?? 'i'}/status/${postId}`;
+            threadPostIds.push(postId);
+            threadUrls.push(url);
+            results.push({
+              index: index + 1,
+              postId,
+              url,
+              text: response.data?.text ?? post.text,
+            });
+            previousPostId = postId;
+          }
+
+          const publishedAt = new Date().toISOString();
+          const published = publishDraftRecord(config.draftsFilePath, input.draftId, {
+            postId: threadPostIds[0],
+            url: threadUrls[0],
+            publishedAt,
+            threadPostIds,
+            threadUrls,
+          });
+
+          return ok(request.action, {
+            draftId: input.draftId,
+            published,
+            result: {
+              postId: threadPostIds[0],
+              url: threadUrls[0],
+              threadPostIds,
+              threadUrls,
+              posts: results,
+            },
+          }, false);
+        }
+
+        throw new XPluginError('VALIDATION_ERROR', 'Draft does not contain a publishable post or thread.', {
+          details: { draftId: input.draftId, intent: draft.intent },
+        });
       }
       case 'x.media.upload': {
         const media = buildMediaDraft(request.input as { path: string; mimeType?: string; altText?: string });
