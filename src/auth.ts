@@ -155,7 +155,9 @@ export async function exchangeAuthorizationCode(params: {
   };
 
   if (params.config.clientSecret) {
-    const basic = Buffer.from(`${params.config.clientId}:${params.config.clientSecret}`, 'utf8').toString('base64');
+    const encodedClientId = encodeURIComponent(params.config.clientId);
+    const encodedClientSecret = encodeURIComponent(params.config.clientSecret);
+    const basic = Buffer.from(`${encodedClientId}:${encodedClientSecret}`, 'utf8').toString('base64');
     headers.Authorization = `Basic ${basic}`;
     body.delete('client_secret');
   } else {
@@ -202,7 +204,9 @@ export async function refreshAccessToken(params: {
   };
 
   if (params.config.clientSecret) {
-    const basic = Buffer.from(`${params.config.clientId}:${params.config.clientSecret}`, 'utf8').toString('base64');
+    const encodedClientId = encodeURIComponent(params.config.clientId);
+    const encodedClientSecret = encodeURIComponent(params.config.clientSecret);
+    const basic = Buffer.from(`${encodedClientId}:${encodedClientSecret}`, 'utf8').toString('base64');
     headers.Authorization = `Basic ${basic}`;
   } else {
     body.set('client_id', params.config.clientId);
