@@ -1,9 +1,17 @@
 {
   "id": "openclaw-plugin-x",
   "name": "OpenClaw X Plugin",
-  "description": "Draft-first X/Twitter management plugin for OpenClaw with OAuth, reads, durable drafts, approval, and guarded publish.",
-  "version": "0.2.0",
+  "description": "OpenClaw plugin for X/Twitter with OAuth account connection, authenticated reads, durable drafts, approval-gated publish, and local session/draft persistence.",
+  "version": "0.2.1",
   "entry": "dist/plugin-entry.js",
+  "setup": {
+    "summary": "Requires your own X developer app credentials. Stores OAuth session state and drafts on the local machine.",
+    "steps": [
+      "Set X clientId and redirectUri, plus clientSecret for OAuth token exchange.",
+      "Use stable local state paths for sessionFilePath and draftsFilePath, outside the plugin install directory.",
+      "Connect the account with x_account_auth_url and x_account_complete before using authenticated reads or publish tools."
+    ]
+  },
   "skills": [],
   "contracts": {
     "tools": [
@@ -30,14 +38,17 @@
   },
   "uiHints": {
     "clientId": {
-      "label": "X Client ID"
+      "label": "X Client ID",
+      "required": true
     },
     "clientSecret": {
       "label": "X Client Secret",
-      "sensitive": true
+      "sensitive": true,
+      "required": true
     },
     "redirectUri": {
-      "label": "OAuth Redirect URI"
+      "label": "OAuth Redirect URI",
+      "required": true
     },
     "bearerToken": {
       "label": "X Bearer Token",
@@ -56,11 +67,13 @@
     },
     "draftsFilePath": {
       "label": "Draft store path",
-      "advanced": true
+      "advanced": true,
+      "description": "Stable local JSON file where draft records are stored. Keep this outside the plugin install directory."
     },
     "sessionFilePath": {
       "label": "Session store path",
-      "advanced": true
+      "advanced": true,
+      "description": "Stable local JSON file where OAuth session tokens are stored. Keep this outside the plugin install directory."
     },
     "approvalMode": {
       "label": "Approval mode",
@@ -70,19 +83,20 @@
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
+    "required": ["clientId", "clientSecret", "redirectUri"],
     "properties": {
       "apiBaseUrl": { "type": "string" },
       "uploadApiBaseUrl": { "type": "string" },
-      "clientId": { "type": "string" },
-      "clientSecret": { "type": "string" },
-      "redirectUri": { "type": "string" },
-      "bearerToken": { "type": "string" },
-      "accessToken": { "type": "string" },
-      "refreshToken": { "type": "string" },
+      "clientId": { "type": "string", "description": "X app client ID used for OAuth." },
+      "clientSecret": { "type": "string", "description": "X app client secret used for OAuth token exchange." },
+      "redirectUri": { "type": "string", "description": "OAuth redirect URI registered with the X app." },
+      "bearerToken": { "type": "string", "description": "Optional bearer token for read-oriented fallback paths." },
+      "accessToken": { "type": "string", "description": "Optional user access token if supplying tokens manually instead of OAuth connect." },
+      "refreshToken": { "type": "string", "description": "Optional user refresh token for persisted OAuth sessions." },
       "userId": { "type": "string" },
       "approvalMode": { "type": "string", "enum": ["always"] },
-      "draftsFilePath": { "type": "string" },
-      "sessionFilePath": { "type": "string" }
+      "draftsFilePath": { "type": "string", "description": "Stable local path for persisted draft records." },
+      "sessionFilePath": { "type": "string", "description": "Stable local path for persisted OAuth session state and tokens." }
     }
   }
 }

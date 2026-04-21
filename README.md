@@ -54,6 +54,12 @@ Approval remains mandatory by design.
 
 Important: this plugin is generic, but OAuth is not shared. Each user installing the plugin should configure their own X developer app credentials. The auth URL is generated from the credentials configured in that user's OpenClaw runtime, not from a generic shared app.
 
+Registry trust note:
+- this plugin requires user-supplied X OAuth credentials
+- it persists session state and drafts to local JSON files
+- recommended stable paths are outside the plugin install directory under `~/.openclaw/state/openclaw-plugin-x/`
+- if a registry scanner flags undeclared credentials or persistence, the right fix is to make those runtime expectations explicit, not to hide them
+
 ## Install
 
 ### Option A: local/path install during development
@@ -93,10 +99,10 @@ npm run build
 ### Environment variables
 Required for OAuth flow:
 - `X_CLIENT_ID`
+- `X_CLIENT_SECRET`
 - `X_REDIRECT_URI`
 
 Commonly needed:
-- `X_CLIENT_SECRET`
 - `X_BEARER_TOKEN`
 - `X_ACCESS_TOKEN`
 - `X_REFRESH_TOKEN`
@@ -112,6 +118,8 @@ Defaults exist, but may be overridden when needed:
 - `X_SESSION_FILE_PATH`
 
 Important: do not point `X_SESSION_FILE_PATH` or `X_DRAFTS_FILE_PATH` inside the plugin install directory under `~/.openclaw/extensions/...`. OpenClaw plugin updates replace that directory and will wipe plugin-local files stored there.
+
+These files may contain sensitive OAuth session material, including access tokens and refresh tokens when OAuth connect is used. Treat them as local secrets and keep them in a user-private path.
 
 Recommended stable paths:
 - `X_SESSION_FILE_PATH=~/.openclaw/state/openclaw-plugin-x/session.json`

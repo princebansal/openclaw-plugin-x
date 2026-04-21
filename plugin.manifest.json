@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "id": "openclaw-plugin-x",
   "name": "OpenClaw X Plugin",
-  "version": "0.2.0",
-  "description": "Tool-oriented OpenClaw plugin for draft-first X/Twitter account management.",
+  "version": "0.2.1",
+  "description": "Tool-oriented OpenClaw plugin for X/Twitter account management with OAuth, authenticated reads, approval-gated publish, and local session/draft persistence.",
   "entry": "dist/plugin-entry.js",
   "tools": [
     "x.account.connect",
@@ -27,7 +27,9 @@
     "x.util.resolve_url"
   ],
   "notes": [
-    "Manifest reflects the current router/tool surface but still needs end-to-end validation in a live OpenClaw plugin loader.",
+    "Requires user-supplied X app credentials: clientId, clientSecret, and redirectUri for OAuth-based account connection.",
+    "Stores session state and draft records in local JSON files; configure stable paths outside the plugin install directory.",
+    "Manifest reflects the current router/tool surface but still needs one clean end-to-end validation pass from a packaged reinstall path.",
     "Draft creation and approval are dry-run-safe; x.post.publish performs a real X write when invoked with a valid approved draft and user token."
   ]
 }
