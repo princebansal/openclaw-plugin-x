@@ -11,7 +11,7 @@
 | Persistent quote draft | `x.post.quote` | Implemented | Requires target id/url |
 | Persistent thread draft | `x.post.thread` | Implemented | Stores ordered draft steps |
 | Explicit approval record | `x.post.approve` | Implemented | Marks stored draft as approved |
-| Approved single-post publish | `x.post.publish` | Implemented, proven | Real X write path; requires approved draft + valid user token |
+| Approved single-post publish | `x.post.publish` | Implemented, constrained by X policy | Real X write path; requires approved draft + valid user token, but some reply publishes can still be rejected by X policy/account restrictions even after plugin approval |
 | Media upload | `x.media.upload` | Implemented, proven | Chunked v2 upload flow with metadata/alt text |
 | URL resolution | `x.util.resolve_url` | Implemented | Supports x.com and twitter.com post URLs |
 | Own timeline read | `x.timeline.me` | Implemented, proven | Fetches latest own tweets with normalization |

@@ -193,6 +193,9 @@ This plugin is designed to pair with an agent-side skill such as `x-management` 
 - OAuth completion is currently manual; automatic callback handling is not implemented
 - engagement actions are plan-only today
 - only approved drafts can be published live today
+- API publish eligibility is still constrained by X platform policy and account permissions, not just plugin approval state
+- API replies may be rejected for accounts that have not mentioned or otherwise engaged with you; in live testing this surfaced as X API `403 Forbidden` with: `Reply to this conversation is not allowed because you have not been mentioned or otherwise engaged by the author of the post you are replying to.`
+- for outreach/distribution, quote posts or manual in-app replies may work when API replies are blocked
 - public install/load validation still needs one clean pass from the distributable artifact
 
 ## Release notes for maintainers

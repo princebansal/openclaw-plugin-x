@@ -43,7 +43,7 @@ Use this before any public npm/plugin-manifest/ClawHub-style release.
 - [ ] `x_post_quote`
 - [ ] `x_post_thread` creates a durable thread draft
 - [ ] `x_post_approve`
-- [ ] `x_post_publish` succeeds for an approved single-post draft
+- [ ] `x_post_publish` succeeds for an approved single-post draft, or the release notes/README clearly document any current X-side policy restrictions observed during publish attempts
 - [ ] `x_post_publish` succeeds for an approved thread draft
 
 ## 7. Media smoke test
