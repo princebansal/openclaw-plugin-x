@@ -40,7 +40,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           approvalMode: config.approvalMode,
           draftsFilePath: config.draftsFilePath,
           sessionFilePath: config.sessionFilePath,
-          session,
+          session: redactSession(session),
           plan: buildConnectPlan(config),
         });
       }
@@ -58,7 +58,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           state: pending.state,
           redirectUri: pending.redirectUri,
           scopes: pending.scopes,
-          session: stored,
+          session: redactSession(stored),
         }, true, ['Open this URL, approve the app, then complete the flow with the returned code or full redirect URL.']);
       }
       case 'x.account.complete': {
@@ -97,7 +97,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
         const stored = setSession(config.sessionFilePath, finalized);
         return ok(request.action, {
           connected: true,
-          session: stored,
+          session: redactSession(stored),
           me,
         }, false, ['OAuth exchange completed. Callback HTTP route is still not wired; this used manual code completion.']);
       }
@@ -112,6 +112,79 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           });
         }
         return ok(request.action, { me }, false);
+      }
+      case 'x.followers.list': {
+        const input = request.input as {
+          userId?: string;
+          maxResults?: number;
+          paginationToken?: string;
+          allPages?: boolean;
+          maxPages?: number;
+        };
+
+        const effectiveSession = await ensureFreshSession(config, session);
+        const effectiveConfig = withSessionTokens(config, effectiveSession);
+        const targetUserId = input.userId?.trim() || effectiveSession?.userId || effectiveConfig.userId;
+        if (!targetUserId) {
+          throw new XPluginError('AUTH_REQUIRED', 'Connected user id is missing. Reconnect the X account first.');
+        }
+
+        assertSessionScopes(effectiveSession, ['follows.read', 'tweet.read', 'users.read'], 'x.followers.list');
+
+        const pageSize = normalizePageSize(input.maxResults);
+        const allPages = input.allPages === true;
+        const maxPages = normalizeMaxPages(input.maxPages, allPages ? 20 : 1);
+        const followersClient = new XApiHttpClient(effectiveConfig);
+
+        let paginationToken = input.paginationToken?.trim() || undefined;
+        let pageCount = 0;
+        let nextPaginationToken: string | undefined;
+        const followersById = new Map<string, ReturnType<typeof normalizeFollowers>[number]>();
+        const pageSummaries: Array<{ page: number; resultCount: number; nextPaginationToken?: string }> = [];
+
+        do {
+          const response = await followersClient.request<{
+            data?: Record<string, unknown>[];
+            meta?: Record<string, unknown>;
+          }>({
+            method: 'GET',
+            path: buildFollowersPath(targetUserId, {
+              maxResults: pageSize,
+              ...(paginationToken ? { paginationToken } : {}),
+            }),
+            authMode: 'user',
+          });
+
+          const normalizedFollowers = normalizeFollowers(response.data ?? []);
+          for (const follower of normalizedFollowers) {
+            followersById.set(follower.id, follower);
+          }
+
+          nextPaginationToken = typeof response.meta?.next_token === 'string'
+            ? response.meta.next_token
+            : undefined;
+          pageCount += 1;
+          pageSummaries.push({
+            page: pageCount,
+            resultCount: normalizedFollowers.length,
+            ...(nextPaginationToken ? { nextPaginationToken } : {}),
+          });
+          paginationToken = nextPaginationToken;
+        } while (allPages && paginationToken && pageCount < maxPages);
+
+        const followers = Array.from(followersById.values());
+        return ok(request.action, {
+          userId: targetUserId,
+          followers,
+          usernames: followers.map((follower) => follower.username),
+          pageSize,
+          pageCount,
+          ...(nextPaginationToken ? { nextPaginationToken } : {}),
+          partial: Boolean(allPages && nextPaginationToken),
+          pageSummaries,
+        }, false, allPages && nextPaginationToken
+          ? [`Stopped after ${pageCount} page(s). Use nextPaginationToken to continue or increase maxPages.`]
+          : []);
       }
       case 'x.post.create': {
         const draft = buildPostDraft(request.input as { text: string; mediaIds?: string[] });
@@ -514,6 +587,26 @@ function withSessionTokens(config: ReturnType<typeof loadAccountConfig>, session
   };
 }
 
+function redactSession(session?: ReturnType<typeof getSession>) {
+  if (!session) return undefined;
+  const { accessToken, refreshToken, pendingOAuth, ...safeSession } = session;
+  return {
+    ...safeSession,
+    hasAccessToken: Boolean(accessToken),
+    hasRefreshToken: Boolean(refreshToken),
+    ...(pendingOAuth ? {
+      pendingOAuth: {
+        state: pendingOAuth.state,
+        codeChallenge: pendingOAuth.codeChallenge,
+        authorizeUrl: pendingOAuth.authorizeUrl,
+        createdAt: pendingOAuth.createdAt,
+        redirectUri: pendingOAuth.redirectUri,
+        scopes: pendingOAuth.scopes,
+      },
+    } : {}),
+  };
+}
+
 function normalizeTimelinePayloadOne(response: { data?: Record<string, unknown>; includes?: Record<string, unknown> }) {
   const normalized = normalizeTimelineResponse({
     data: response.data ? [response.data] : [],
@@ -549,4 +642,97 @@ function buildDraftPreview(record: DraftRecord) {
     ...(record.draft?.replyToPostId ? { replyToPostId: record.draft.replyToPostId } : {}),
     ...(record.draft?.quotePostId ? { quotePostId: record.draft.quotePostId } : {}),
   };
+}
+
+function buildFollowersPath(userId: string, input: { maxResults: number; paginationToken?: string }) {
+  const query = new URLSearchParams({
+    max_results: String(input.maxResults),
+    'user.fields': 'created_at,description,profile_image_url,protected,public_metrics,url,verified',
+  });
+
+  if (input.paginationToken) {
+    query.set('pagination_token', input.paginationToken);
+  }
+
+  return `/2/users/${userId}/followers?${query.toString()}`;
+}
+
+function normalizeFollowers(rows: Record<string, unknown>[]) {
+  return rows
+    .map((row) => {
+      const id = typeof row.id === 'string' ? row.id : undefined;
+      const username = typeof row.username === 'string' ? row.username : undefined;
+      if (!id || !username) {
+        return undefined;
+      }
+
+      return {
+        id,
+        username,
+        ...(typeof row.name === 'string' ? { name: row.name } : {}),
+        ...(typeof row.description === 'string' ? { description: row.description } : {}),
+        ...(typeof row.profile_image_url === 'string' ? { profileImageUrl: row.profile_image_url } : {}),
+        ...(typeof row.url === 'string' ? { url: row.url } : {}),
+        ...(typeof row.created_at === 'string' ? { createdAt: row.created_at } : {}),
+        ...(typeof row.protected === 'boolean' ? { protected: row.protected } : {}),
+        ...(typeof row.verified === 'boolean' ? { verified: row.verified } : {}),
+        ...(row.public_metrics && typeof row.public_metrics === 'object'
+          ? { publicMetrics: row.public_metrics as Record<string, unknown> }
+          : {}),
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => Boolean(row));
+}
+
+function normalizePageSize(value: number | undefined) {
+  if (value === undefined) {
+    return 1000;
+  }
+
+  if (!Number.isInteger(value) || value < 1 || value > 1000) {
+    throw new XPluginError('VALIDATION_ERROR', 'maxResults must be an integer between 1 and 1000.');
+  }
+
+  return value;
+}
+
+function normalizeMaxPages(value: number | undefined, fallback: number) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  if (!Number.isInteger(value) || value < 1 || value > 100) {
+    throw new XPluginError('VALIDATION_ERROR', 'maxPages must be an integer between 1 and 100.');
+  }
+
+  return value;
+}
+
+function assertSessionScopes(
+  session: ReturnType<typeof getSession> | undefined,
+  requiredScopes: string[],
+  feature: string,
+) {
+  if (!session?.scopes?.length) {
+    return;
+  }
+
+  const currentScopes = new Set(session.scopes);
+  const missingScopes = requiredScopes.filter((scope) => !currentScopes.has(scope));
+  if (!missingScopes.length) {
+    return;
+  }
+
+  throw new XPluginError(
+    'AUTH_REQUIRED',
+    `Connected X session is missing required scope(s): ${missingScopes.join(', ')}. Reconnect the account and approve the updated scope set.`,
+    {
+      details: {
+        feature,
+        missingScopes,
+        currentScopes: session.scopes,
+        reconnectSteps: ['x_account_auth_url', 'x_account_complete'],
+      },
+    },
+  );
 }

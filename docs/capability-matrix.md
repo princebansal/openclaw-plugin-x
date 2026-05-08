@@ -6,6 +6,7 @@
 | OAuth auth URL generation | `x.account.auth_url` | Implemented | Generates/stores PKCE pending state |
 | OAuth manual completion | `x.account.complete` | Implemented | Accepts code or redirect URL; callback HTTP route still not wired |
 | Authenticated profile read | `x.account.me` | Implemented | Calls `/2/users/me` with user auth |
+| Followers list read | `x.followers.list` | Implemented | Calls `/2/users/{id}/followers` with user auth; requires `follows.read` in the connected OAuth scope set |
 | Persistent draft create | `x.post.create` | Implemented | Stores durable draft record |
 | Persistent reply draft | `x.post.reply` | Implemented | Requires target id/url |
 | Persistent quote draft | `x.post.quote` | Implemented | Requires target id/url |
@@ -22,5 +23,5 @@
 | Repost / undo repost | `x.engagement.repost` | Stubbed | Planning only |
 | Bookmark / remove bookmark | `x.engagement.bookmark` | Stubbed | Planning only |
 | OAuth callback flow | internal auth | Partial | Manual completion exists; automatic callback handling does not |
-| Thread publish | future write path | Not implemented | Current publish path only supports single-post drafts |
+| Thread publish | `x.post.publish` | Implemented, proven | Publishes approved thread drafts by chaining replies |
 | OpenClaw SDK tool registration | plugin entrypoint | Implemented, proven locally | Buildable entrypoint exists and active plugin behavior was validated in-session |

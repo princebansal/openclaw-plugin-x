@@ -155,6 +155,20 @@ export default definePluginEntry({
     });
 
     registerTool({
+      name: 'x_followers_list',
+      label: 'X Followers List',
+      description: 'Fetch followers for the connected X account or a specified user id.',
+      parameters: Type.Object({
+        userId: Type.Optional(Type.String()),
+        maxResults: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
+        paginationToken: Type.Optional(Type.String()),
+        allPages: Type.Optional(Type.Boolean()),
+        maxPages: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+      }, { additionalProperties: false }),
+      execute: (params) => executeAction('x.followers.list', { ...params }, pluginConfig),
+    });
+
+    registerTool({
       name: 'x_post_create',
       label: 'X Post Create Draft',
       description: 'Create a durable draft for a new X post.',

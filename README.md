@@ -5,6 +5,7 @@ Draft-first X/Twitter management plugin for OpenClaw.
 This package has been proven locally for the core single-account workflow:
 - OAuth PKCE connect flow with manual code/redirect completion
 - authenticated reads
+- follower-list reads
 - durable local drafts
 - explicit approval recording
 - approval-gated publish for single posts and threads
@@ -18,6 +19,7 @@ It is **real**, but it is **not fully productized** yet. The main remaining gaps
 - OAuth auth URL generation and manual completion
 - session persistence and token refresh handling
 - `x_account_me`
+- `x_followers_list`
 - `x_timeline_me`
 - `x_timeline_mentions`
 - `x_post_get`
@@ -129,8 +131,11 @@ Typical scope set now includes:
 - `tweet.read`
 - `tweet.write`
 - `users.read`
+- `follows.read`
 - `offline.access`
 - `media.write`
+
+Important: if you upgrade from an older plugin build that did not request `follows.read`, existing sessions must reconnect through the OAuth flow before follower-list reads will work.
 
 ## Tool surface
 
@@ -141,6 +146,7 @@ Typical scope set now includes:
 - `x_account_me`
 
 ### Read
+- `x_followers_list` (`userId?`, `maxResults?`, `paginationToken?`, `allPages?`, `maxPages?`)
 - `x_timeline_me`
 - `x_timeline_mentions`
 - `x_post_get`
@@ -157,6 +163,11 @@ Typical scope set now includes:
 
 ### Media
 - `x_media_upload`
+
+### Follower tracking pattern
+- call `x_followers_list` with `allPages: true` when you need a full follower snapshot
+- if the response returns `partial: true`, continue with `nextPaginationToken`
+- compare the returned `usernames` list against your stored prior snapshot to detect unfollowers
 
 ### Scaffold-only engagement
 - `x_engagement_like`
@@ -197,6 +208,7 @@ This plugin is designed to pair with an agent-side skill such as `x-management` 
 - API replies may be rejected for accounts that have not mentioned or otherwise engaged with you; in live testing this surfaced as X API `403 Forbidden` with: `Reply to this conversation is not allowed because you have not been mentioned or otherwise engaged by the author of the post you are replying to.`
 - for outreach/distribution, quote posts or manual in-app replies may work when API replies are blocked
 - public install/load validation still needs one clean pass from the distributable artifact
+- follower-list reads require the OAuth session to include `follows.read`; older sessions created before that scope was added must reconnect
 
 ## Release notes for maintainers
 - Manual release checks live in `docs/release-checklist.md`

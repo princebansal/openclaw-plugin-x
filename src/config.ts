@@ -9,7 +9,7 @@ const DEFAULT_X_OAUTH_AUTHORIZE_URL = 'https://x.com/i/oauth2/authorize';
 const DEFAULT_X_OAUTH_TOKEN_URL = 'https://api.x.com/2/oauth2/token';
 const DEFAULT_DRAFTS_FILE_PATH = path.resolve(process.cwd(), '.openclaw-x-drafts.json');
 const DEFAULT_SESSION_FILE_PATH = path.resolve(process.cwd(), '.openclaw-x-session.json');
-const DEFAULT_SCOPES = ['tweet.read', 'tweet.write', 'users.read', 'offline.access', 'media.write'];
+const DEFAULT_SCOPES = ['tweet.read', 'tweet.write', 'users.read', 'follows.read', 'offline.access', 'media.write'];
 
 export function loadAccountConfig(overrides: Partial<AccountConfig> = {}): AccountConfig {
   const config: AccountConfig = {

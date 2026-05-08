@@ -3,6 +3,7 @@ export type XAction =
   | 'x.account.auth_url'
   | 'x.account.complete'
   | 'x.account.me'
+  | 'x.followers.list'
   | 'x.post.create'
   | 'x.post.reply'
   | 'x.post.quote'

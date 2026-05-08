@@ -42,9 +42,9 @@ export async function uploadMediaV2(params: {
   accessToken: string;
   media: ReturnType<typeof buildMediaDraft>;
 }): Promise<UploadedMedia> {
-  const bytes = fs.readFileSync(params.media.path);
   const contentType = params.media.mimeType || inferMimeType(params.media.fileName);
   const mediaCategory = inferMediaCategory(contentType);
+  const mediaBlob = await openMediaBlob(params.media.path, contentType);
 
   const initialized = await requestJson<{ data?: Record<string, unknown> }>({
     url: `${params.config.uploadApiBaseUrl}/2/media/upload/initialize`,
@@ -65,11 +65,11 @@ export async function uploadMediaV2(params: {
     });
   }
 
-  for (let offset = 0, segmentIndex = 0; offset < bytes.length; offset += CHUNK_SIZE, segmentIndex += 1) {
-    const chunk = bytes.subarray(offset, Math.min(offset + CHUNK_SIZE, bytes.length));
+  for (let offset = 0, segmentIndex = 0; offset < mediaBlob.size; offset += CHUNK_SIZE, segmentIndex += 1) {
+    const chunk = mediaBlob.slice(offset, Math.min(offset + CHUNK_SIZE, mediaBlob.size), contentType);
     const form = new FormData();
     form.append('segment_index', String(segmentIndex));
-    form.append('media', new Blob([chunk], { type: contentType }), params.media.fileName);
+    form.append('media', chunk, params.media.fileName);
 
     await requestJson({
       url: `${params.config.uploadApiBaseUrl}/2/media/upload/${mediaId}/append`,
@@ -114,6 +114,18 @@ export async function uploadMediaV2(params: {
     ...(typeof params.media.sizeBytes === 'number' ? { sizeBytes: params.media.sizeBytes } : {}),
     uploadMode: 'v2',
   };
+}
+
+async function openMediaBlob(filePath: string, contentType: string): Promise<Blob> {
+  const openAsBlob = (fs as typeof fs & {
+    openAsBlob?: (path: string, options?: { type?: string }) => Promise<Blob>;
+  }).openAsBlob;
+
+  if (!openAsBlob) {
+    throw new XPluginError('VALIDATION_ERROR', 'This Node.js runtime does not support fs.openAsBlob, which is required for X media uploads.');
+  }
+
+  return openAsBlob(filePath, { type: contentType });
 }
 
 async function waitForProcessing(config: AccountConfig, accessToken: string, mediaId: string, finalized: { data?: Record<string, unknown> }) {

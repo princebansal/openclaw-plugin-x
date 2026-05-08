@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-04-21
+Last updated: 2026-04-24
 
 ## Proven working
 - `npm run check` passes.
@@ -10,6 +10,7 @@ Last updated: 2026-04-21
 - OAuth auth URL generation, manual completion, and refresh handling are implemented.
 - Read tools are working for:
   - `x.account.me`
+  - `x.followers.list` (with `follows.read` in the connected OAuth scope set)
   - `x.timeline.me`
   - `x.timeline.mentions`
   - `x.post.get`
@@ -33,6 +34,7 @@ Last updated: 2026-04-21
 - Thread publish has working runtime logic and live proof, but first-class tool/runtime reload behavior still needs one clean validation pass from a fully reinstalled packaged build.
 - Deeper multi-hop thread/context expansion is still limited.
 - Public-release polish (install docs, tests, release checklist quality) still needs a cleanup pass.
+- Existing OAuth sessions created before `follows.read` was added will need to reconnect before follower-list reads can succeed.
 
 ## No longer true
 The following older caveats are now outdated:
@@ -41,5 +43,5 @@ The following older caveats are now outdated:
 - native plugin entrypoint is no longer just hypothetical
 
 ## Current honest line
-This plugin is functionally real for the core single-account X management loop, including thread publishing.
+This plugin is functionally real for the core single-account X management loop, including thread publishing and follower-list reads.
 It is still worth treating as an early but usable release, with one remaining focus area around clean packaged-runtime validation.
