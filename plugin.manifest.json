@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "openclaw-plugin-x",
   "name": "OpenClaw X Plugin",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Tool-oriented OpenClaw plugin for X/Twitter account management with OAuth, authenticated reads (including followers), approval-gated publish, and local session/draft persistence.",
   "entry": "dist/plugin-entry.js",
   "tools": [
