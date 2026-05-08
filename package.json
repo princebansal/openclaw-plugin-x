@@ -1,6 +1,6 @@
 {
   "name": "openclaw-plugin-x",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Draft-first X/Twitter management plugin for OpenClaw with OAuth, reads, follower-list access, durable drafts, approval, and guarded publish.",
   "type": "module",
   "main": "dist/plugin-entry.js",

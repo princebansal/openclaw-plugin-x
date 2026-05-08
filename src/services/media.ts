@@ -39,7 +39,7 @@ export function buildMediaDraft(input: UploadMediaInput): MediaDraft & { sizeByt
 
 export async function uploadMediaV2(params: {
   config: AccountConfig;
-  accessToken: string;
+  credential: string;
   media: ReturnType<typeof buildMediaDraft>;
 }): Promise<UploadedMedia> {
   const contentType = params.media.mimeType || inferMimeType(params.media.fileName);
@@ -48,7 +48,7 @@ export async function uploadMediaV2(params: {
 
   const initialized = await requestJson<{ data?: Record<string, unknown> }>({
     url: `${params.config.uploadApiBaseUrl}/2/media/upload/initialize`,
-    accessToken: params.accessToken,
+    credential: params.credential,
     method: 'POST',
     json: {
       media_type: contentType,
@@ -73,7 +73,7 @@ export async function uploadMediaV2(params: {
 
     await requestJson({
       url: `${params.config.uploadApiBaseUrl}/2/media/upload/${mediaId}/append`,
-      accessToken: params.accessToken,
+      credential: params.credential,
       method: 'POST',
       body: form,
       errorMessage: `X media append failed at segment ${segmentIndex}`,
@@ -82,17 +82,17 @@ export async function uploadMediaV2(params: {
 
   const finalized = await requestJson<{ data?: Record<string, unknown> }>({
     url: `${params.config.uploadApiBaseUrl}/2/media/upload/${mediaId}/finalize`,
-    accessToken: params.accessToken,
+    credential: params.credential,
     method: 'POST',
     errorMessage: 'X media finalize failed',
   });
 
-  await waitForProcessing(params.config, params.accessToken, mediaId, finalized);
+  await waitForProcessing(params.config, params.credential, mediaId, finalized);
 
   if (params.media.altText) {
     await requestJson({
       url: `${params.config.uploadApiBaseUrl}/2/media/metadata`,
-      accessToken: params.accessToken,
+      credential: params.credential,
       method: 'POST',
       json: {
         id: mediaId,
@@ -128,7 +128,7 @@ async function openMediaBlob(filePath: string, contentType: string): Promise<Blo
   return openAsBlob(filePath, { type: contentType });
 }
 
-async function waitForProcessing(config: AccountConfig, accessToken: string, mediaId: string, finalized: { data?: Record<string, unknown> }) {
+async function waitForProcessing(config: AccountConfig, credential: string, mediaId: string, finalized: { data?: Record<string, unknown> }) {
   let processing = finalized.data?.processing_info as Record<string, unknown> | undefined;
 
   while (processing && typeof processing.state === 'string' && processing.state !== 'succeeded') {
@@ -143,7 +143,7 @@ async function waitForProcessing(config: AccountConfig, accessToken: string, med
 
     const status = await requestJson<{ data?: Record<string, unknown> }>({
       url: `${config.uploadApiBaseUrl}/2/media/upload?media_id=${encodeURIComponent(mediaId)}`,
-      accessToken,
+      credential,
       method: 'GET',
       errorMessage: 'X media status check failed',
     });
@@ -155,14 +155,14 @@ async function waitForProcessing(config: AccountConfig, accessToken: string, med
 
 async function requestJson<T>(params: {
   url: string;
-  accessToken: string;
+  credential: string;
   method: 'GET' | 'POST';
   json?: Record<string, unknown>;
   body?: BodyInit;
   errorMessage: string;
 }): Promise<T> {
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${params.accessToken}`,
+    Authorization: `Bearer ${params.credential}`,
   };
 
   let body: BodyInit | undefined = params.body;

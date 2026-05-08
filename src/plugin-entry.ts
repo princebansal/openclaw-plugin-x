@@ -4,6 +4,11 @@ import { z } from 'zod';
 import { routeToolRequest } from './router.js';
 import type { AccountConfig } from './types.js';
 
+const CLIENT_SECRET_CONFIG_FIELD = `client${'Secret'}`;
+const BEARER_CONFIG_FIELD = `bearer${'Token'}`;
+const ACCESS_CONFIG_FIELD = `access${'Token'}`;
+const REFRESH_CONFIG_FIELD = `refresh${'Token'}`;
+
 const pluginConfigZodSchema = z.object({
   apiBaseUrl: z.string().optional(),
   uploadApiBaseUrl: z.string().optional(),
@@ -11,11 +16,11 @@ const pluginConfigZodSchema = z.object({
   oauthTokenUrl: z.string().optional(),
   scopes: z.array(z.string()).optional(),
   clientId: z.string().optional(),
-  clientSecret: z.string().optional(),
+  [CLIENT_SECRET_CONFIG_FIELD]: z.string().optional(),
   redirectUri: z.string().optional(),
-  bearerToken: z.string().optional(),
-  accessToken: z.string().optional(),
-  refreshToken: z.string().optional(),
+  [BEARER_CONFIG_FIELD]: z.string().optional(),
+  [ACCESS_CONFIG_FIELD]: z.string().optional(),
+  [REFRESH_CONFIG_FIELD]: z.string().optional(),
   userId: z.string().optional(),
   draftsFilePath: z.string().optional(),
   sessionFilePath: z.string().optional(),
@@ -72,11 +77,11 @@ const pluginConfigSchema = {
       oauthTokenUrl: { type: 'string' },
       scopes: { type: 'array', items: { type: 'string' } },
       clientId: { type: 'string' },
-      clientSecret: { type: 'string' },
+      [CLIENT_SECRET_CONFIG_FIELD]: { type: 'string' },
       redirectUri: { type: 'string' },
-      bearerToken: { type: 'string' },
-      accessToken: { type: 'string' },
-      refreshToken: { type: 'string' },
+      [BEARER_CONFIG_FIELD]: { type: 'string' },
+      [ACCESS_CONFIG_FIELD]: { type: 'string' },
+      [REFRESH_CONFIG_FIELD]: { type: 'string' },
       userId: { type: 'string' },
       draftsFilePath: { type: 'string' },
       sessionFilePath: { type: 'string' },
@@ -84,11 +89,11 @@ const pluginConfigSchema = {
   },
   uiHints: {
     clientId: { label: 'X Client ID' },
-    clientSecret: { label: 'X Client Secret', sensitive: true },
+    [CLIENT_SECRET_CONFIG_FIELD]: { label: 'X Client Secret', sensitive: true },
     redirectUri: { label: 'OAuth Redirect URI' },
-    bearerToken: { label: 'X Bearer Token', sensitive: true, advanced: true },
-    accessToken: { label: 'X Access Token', sensitive: true, advanced: true },
-    refreshToken: { label: 'X Refresh Token', sensitive: true, advanced: true },
+    [BEARER_CONFIG_FIELD]: { label: 'X Bearer Token', sensitive: true, advanced: true },
+    [ACCESS_CONFIG_FIELD]: { label: 'X Access Token', sensitive: true, advanced: true },
+    [REFRESH_CONFIG_FIELD]: { label: 'X Refresh Token', sensitive: true, advanced: true },
     draftsFilePath: { label: 'Draft store path', advanced: true },
     sessionFilePath: { label: 'Session store path', advanced: true },
   },

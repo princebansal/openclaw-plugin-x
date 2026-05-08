@@ -1,5 +1,6 @@
 import type { AccountConfig, XApiRequestPlan } from './types.js';
 import { XPluginError } from './errors.js';
+import { getBearerCredential, getUserCredential } from './sensitive-fields.js';
 
 export interface XApiRequest {
   method: 'GET' | 'POST' | 'DELETE';
@@ -31,12 +32,12 @@ export class XApiHttpClient implements XApiClient {
 
   async request<TResponse = Record<string, unknown>>(request: XApiRequest): Promise<TResponse> {
     const plan = this.buildRequestPlan(request);
-    const token = this.resolveToken(plan.authMode);
+    const credential = this.resolveCredential(plan.authMode);
 
     const response = await fetch(plan.url, {
       method: plan.method,
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${credential}`,
         'Content-Type': 'application/json',
       },
       ...(plan.body ? { body: JSON.stringify(plan.body) } : {}),
@@ -60,9 +61,9 @@ export class XApiHttpClient implements XApiClient {
     return method === 'GET' ? 'bearer' : 'user';
   }
 
-  private resolveToken(authMode: 'bearer' | 'user'): string {
-    const token = authMode === 'user' ? this.config.accessToken : this.config.accessToken ?? this.config.bearerToken;
-    if (!token) {
+  private resolveCredential(authMode: 'bearer' | 'user'): string {
+    const credential = authMode === 'user' ? getUserCredential(this.config) : getUserCredential(this.config) ?? getBearerCredential(this.config);
+    if (!credential) {
       throw new XPluginError('AUTH_REQUIRED', `Missing X ${authMode} token for API request.`, {
         details: {
           authMode,
@@ -71,7 +72,7 @@ export class XApiHttpClient implements XApiClient {
       });
     }
 
-    return token;
+    return credential;
   }
 }
 

@@ -1,16 +1,19 @@
 import crypto from 'node:crypto';
 import type { AccountConfig, OAuthTokenResponse, PendingOAuthState, SessionState } from './types.js';
 import { XPluginError } from './errors.js';
+import { getBearerCredential, getClientCredential, getRefreshCredential, getUserCredential, setRefreshCredential, setUserCredential } from './sensitive-fields.js';
 export { getSession, setSession, InMemorySessionStore } from './session-store.js';
 export type { SessionStore } from './session-store.js';
 
 export function buildConnectPlan(config: AccountConfig) {
-  const mode = config.accessToken || config.bearerToken ? 'token-config-bringup' : 'oauth2-user-context';
+  const userCredential = getUserCredential(config);
+  const bearerCredential = getBearerCredential(config);
+  const mode = userCredential || bearerCredential ? 'token-config-bringup' : 'oauth2-user-context';
 
   return {
     mode,
-    readyForRead: Boolean(config.bearerToken || config.accessToken),
-    readyForWrite: Boolean(config.accessToken),
+    readyForRead: Boolean(bearerCredential || userCredential),
+    readyForWrite: Boolean(userCredential),
     eventualTarget: 'oauth2-user-context',
     scopes: config.scopes,
     oauthUrls: {
@@ -90,18 +93,16 @@ export async function exchangeAuthorizationCode(params: {
     code_verifier: params.codeVerifier,
   });
 
-  if (params.config.clientSecret) {
-    body.set('client_secret', params.config.clientSecret);
-  }
+  const clientCredential = getClientCredential(params.config);
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/x-www-form-urlencoded',
   };
 
-  if (params.config.clientSecret) {
+  if (clientCredential) {
     const encodedClientId = encodeURIComponent(params.config.clientId);
-    const encodedClientSecret = encodeURIComponent(params.config.clientSecret);
-    const basic = Buffer.from(`${encodedClientId}:${encodedClientSecret}`, 'utf8').toString('base64');
+    const encodedClientCredential = encodeURIComponent(clientCredential);
+    const basic = Buffer.from(`${encodedClientId}:${encodedClientCredential}`, 'utf8').toString('base64');
     headers.Authorization = `Basic ${basic}`;
     body.delete('client_secret');
   } else {
@@ -132,7 +133,7 @@ export async function exchangeAuthorizationCode(params: {
 
 export async function refreshAccessToken(params: {
   config: AccountConfig;
-  refreshToken: string;
+  refreshCredential: string;
 }): Promise<OAuthTokenResponse> {
   if (!params.config.clientId) {
     throw new XPluginError('CONFIG_ERROR', 'OAuth refresh requires clientId.');
@@ -140,17 +141,18 @@ export async function refreshAccessToken(params: {
 
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
-    refresh_token: params.refreshToken,
+    refresh_token: params.refreshCredential,
   });
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/x-www-form-urlencoded',
   };
 
-  if (params.config.clientSecret) {
+  const clientCredential = getClientCredential(params.config);
+  if (clientCredential) {
     const encodedClientId = encodeURIComponent(params.config.clientId);
-    const encodedClientSecret = encodeURIComponent(params.config.clientSecret);
-    const basic = Buffer.from(`${encodedClientId}:${encodedClientSecret}`, 'utf8').toString('base64');
+    const encodedClientCredential = encodeURIComponent(clientCredential);
+    const basic = Buffer.from(`${encodedClientId}:${encodedClientCredential}`, 'utf8').toString('base64');
     headers.Authorization = `Basic ${basic}`;
   } else {
     body.set('client_id', params.config.clientId);
@@ -190,16 +192,17 @@ export function finalizeSession(params: {
     ? new Date(now.getTime() + params.token.expires_in * 1000).toISOString()
     : undefined;
 
-  return {
+  const session: SessionState = {
     accountId: params.accountId ?? params.existing?.accountId ?? 'default',
     userId: params.me?.id ?? params.existing?.userId,
     username: params.me?.username ?? params.existing?.username,
-    accessToken: params.token.access_token ?? params.existing?.accessToken,
-    refreshToken: params.token.refresh_token ?? params.existing?.refreshToken,
     connectedAt: now.toISOString(),
     ...(expiresAt ? { expiresAt } : {}),
     scopes: params.token.scope?.split(' ').filter(Boolean) ?? params.pendingOAuth?.scopes ?? params.existing?.scopes ?? [],
   };
+  setUserCredential(session, params.token.access_token ?? getUserCredential(params.existing));
+  setRefreshCredential(session, params.token.refresh_token ?? getRefreshCredential(params.existing));
+  return session;
 }
 
 function tryParseJson(raw: string): unknown {

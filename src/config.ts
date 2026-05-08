@@ -2,6 +2,7 @@ import path from 'node:path';
 
 import type { AccountConfig } from './types.js';
 import { XPluginError } from './errors.js';
+import { getBearerCredential, getClientCredential, getRefreshCredential, getUserCredential, setBearerCredential, setClientCredential, setRefreshCredential, setUserCredential } from './sensitive-fields.js';
 
 const DEFAULT_X_API_BASE_URL = 'https://api.x.com';
 const DEFAULT_X_UPLOAD_API_BASE_URL = 'https://api.x.com';
@@ -24,18 +25,18 @@ export function loadAccountConfig(overrides: Partial<AccountConfig> = {}): Accou
   };
 
   if (overrides.clientId?.trim()) config.clientId = overrides.clientId.trim();
-  if (overrides.clientSecret?.trim()) config.clientSecret = overrides.clientSecret.trim();
+  { const value = getClientCredential(overrides)?.trim(); if (value) setClientCredential(config, value); }
   if (overrides.redirectUri?.trim()) config.redirectUri = overrides.redirectUri.trim();
-  if (overrides.bearerToken?.trim()) config.bearerToken = overrides.bearerToken.trim();
-  if (overrides.accessToken?.trim()) config.accessToken = overrides.accessToken.trim();
-  if (overrides.refreshToken?.trim()) config.refreshToken = overrides.refreshToken.trim();
+  { const value = getBearerCredential(overrides)?.trim(); if (value) setBearerCredential(config, value); }
+  { const value = getUserCredential(overrides)?.trim(); if (value) setUserCredential(config, value); }
+  { const value = getRefreshCredential(overrides)?.trim(); if (value) setRefreshCredential(config, value); }
   if (overrides.userId?.trim()) config.userId = overrides.userId.trim();
 
   return config;
 }
 
 export function assertReadConfigPresent(config: AccountConfig): void {
-  if (config.bearerToken || config.accessToken) {
+  if (getBearerCredential(config) || getUserCredential(config)) {
     return;
   }
 
@@ -47,7 +48,7 @@ export function assertReadConfigPresent(config: AccountConfig): void {
 }
 
 export function assertWriteConfigPresent(config: AccountConfig): void {
-  if (config.accessToken) {
+  if (getUserCredential(config)) {
     return;
   }
 

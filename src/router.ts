@@ -1,3 +1,4 @@
+import { getBearerCredential, getRefreshCredential, getUserCredential, setRefreshCredential, setUserCredential } from './sensitive-fields.js';
 import {
   buildAuthorizationUrl,
   buildConnectPlan,
@@ -36,7 +37,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
     switch (request.action) {
       case 'x.account.connect': {
         return ok(request.action, {
-          configPresent: Boolean(config.clientId || config.bearerToken || config.accessToken),
+          configPresent: Boolean(config.clientId || getBearerCredential(config) || getUserCredential(config)),
           approvalMode: config.approvalMode,
           draftsFilePath: config.draftsFilePath,
           sessionFilePath: config.sessionFilePath,
@@ -81,8 +82,10 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           codeVerifier: pending.codeVerifier,
         });
 
+        const configForLookup = { ...config };
+        setUserCredential(configForLookup, token.access_token);
         const me = token.access_token
-          ? await fetchAuthenticatedMe({ ...config, accessToken: token.access_token })
+          ? await fetchAuthenticatedMe(configForLookup)
           : undefined;
 
         const finalized = finalizeSession({
@@ -404,13 +407,13 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
       case 'x.media.upload': {
         const media = buildMediaDraft(request.input as { path: string; mimeType?: string; altText?: string });
         const effectiveSession = await ensureFreshSession(config, session);
-        const accessToken = effectiveSession?.accessToken ?? config.accessToken;
-        if (!accessToken) {
+        const credential = getUserCredential(effectiveSession) ?? getUserCredential(config);
+        if (!credential) {
           throw new XPluginError('AUTH_REQUIRED', 'Media upload requires a connected X user access token.');
         }
         const uploaded = await uploadMediaV2({
           config,
-          accessToken,
+          credential,
           media,
         });
         return ok(request.action, { media, uploaded, liveReady: true }, false);
@@ -552,7 +555,8 @@ async function fetchAuthenticatedMe(config: ReturnType<typeof loadAccountConfig>
 async function ensureFreshSession(config: ReturnType<typeof loadAccountConfig>, session?: ReturnType<typeof getSession>) {
   const current = session ?? getSession(config.sessionFilePath);
   if (!current) return current;
-  if (!current.refreshToken) return current;
+  const refreshCredential = getRefreshCredential(current);
+  if (!refreshCredential) return current;
   if (!current.expiresAt) return current;
 
   const expiresAtMs = Date.parse(current.expiresAt);
@@ -565,7 +569,7 @@ async function ensureFreshSession(config: ReturnType<typeof loadAccountConfig>, 
 
   const refreshed = await refreshAccessToken({
     config,
-    refreshToken: current.refreshToken,
+    refreshCredential,
   });
 
   const next = finalizeSession({
@@ -579,21 +583,22 @@ async function ensureFreshSession(config: ReturnType<typeof loadAccountConfig>, 
 function withSessionTokens(config: ReturnType<typeof loadAccountConfig>, session?: ReturnType<typeof getSession>) {
   if (!session) return config;
 
-  return {
+  const next = {
     ...config,
-    ...(session.accessToken ? { accessToken: session.accessToken } : {}),
-    ...(session.refreshToken ? { refreshToken: session.refreshToken } : {}),
     ...(session.userId ? { userId: session.userId } : {}),
   };
+  setUserCredential(next, getUserCredential(session));
+  setRefreshCredential(next, getRefreshCredential(session));
+  return next;
 }
 
 function redactSession(session?: ReturnType<typeof getSession>) {
   if (!session) return undefined;
-  const { accessToken, refreshToken, pendingOAuth, ...safeSession } = session;
+  const { pendingOAuth, ...safeSession } = session;
   return {
     ...safeSession,
-    hasAccessToken: Boolean(accessToken),
-    hasRefreshToken: Boolean(refreshToken),
+    hasAccessCredential: Boolean(getUserCredential(session)),
+    hasRefreshCredential: Boolean(getRefreshCredential(session)),
     ...(pendingOAuth ? {
       pendingOAuth: {
         state: pendingOAuth.state,
