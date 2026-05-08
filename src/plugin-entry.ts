@@ -1,5 +1,4 @@
 import { Type } from '@sinclair/typebox';
-import { definePluginEntry } from 'openclaw/plugin-sdk/plugin-entry';
 import { z } from 'zod';
 
 import { routeToolRequest } from './router.js';
@@ -21,6 +20,28 @@ const pluginConfigZodSchema = z.object({
   draftsFilePath: z.string().optional(),
   sessionFilePath: z.string().optional(),
 }).strict();
+
+
+type PluginEntryDefinition = {
+  id: string;
+  name: string;
+  description: string;
+  configSchema: typeof pluginConfigSchema;
+  register: (api: {
+    pluginConfig?: unknown;
+    registerTool: (tool: {
+      name: string;
+      label: string;
+      description: string;
+      parameters: object;
+      execute: (toolCallId: string, params: Record<string, unknown>) => Promise<{ content: { type: 'text'; text: string }[]; details: unknown }>;
+    }, metadata?: { name?: string }) => void;
+  }) => void;
+};
+
+function definePluginEntry(entry: PluginEntryDefinition): PluginEntryDefinition {
+  return entry;
+}
 
 const pluginConfigSchema = {
   safeParse(value: unknown) {

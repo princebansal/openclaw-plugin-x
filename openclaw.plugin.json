@@ -11,6 +11,50 @@
       "Use stable local state paths for sessionFilePath and draftsFilePath, outside the plugin install directory.",
       "Connect the account with x_account_auth_url and x_account_complete before using authenticated reads or publish tools.",
       "Follower-list reads require the OAuth scope follows.read; older sessions must reconnect after upgrading."
+    ],
+    "providers": [
+      {
+        "id": "x",
+        "name": "X / Twitter API",
+        "type": "oauth2",
+        "externalService": "x.com",
+        "envVars": [
+          "X_CLIENT_ID",
+          "X_CLIENT_SECRET",
+          "X_REDIRECT_URI",
+          "X_BEARER_TOKEN",
+          "X_ACCESS_TOKEN",
+          "X_REFRESH_TOKEN",
+          "X_USER_ID",
+          "X_API_BASE_URL",
+          "X_UPLOAD_API_BASE_URL",
+          "X_OAUTH_AUTHORIZE_URL",
+          "X_OAUTH_TOKEN_URL",
+          "X_OAUTH_SCOPES",
+          "X_DRAFTS_FILE_PATH",
+          "X_SESSION_FILE_PATH"
+        ],
+        "requiredEnvVars": [
+          "X_CLIENT_ID",
+          "X_CLIENT_SECRET",
+          "X_REDIRECT_URI"
+        ],
+        "sensitiveEnvVars": [
+          "X_CLIENT_SECRET",
+          "X_BEARER_TOKEN",
+          "X_ACCESS_TOKEN",
+          "X_REFRESH_TOKEN"
+        ],
+        "scopes": [
+          "tweet.read",
+          "tweet.write",
+          "users.read",
+          "follows.read",
+          "offline.access",
+          "media.write"
+        ],
+        "notes": "OAuth tokens are persisted only to the configured local sessionFilePath; drafts are persisted only to draftsFilePath."
+      }
     ]
   },
   "skills": [],
@@ -86,18 +130,63 @@
     "type": "object",
     "additionalProperties": false,
     "properties": {
-      "apiBaseUrl": { "type": "string" },
-      "uploadApiBaseUrl": { "type": "string" },
-      "clientId": { "type": "string", "description": "X app client ID used for OAuth." },
-      "clientSecret": { "type": "string", "description": "X app client secret used for OAuth token exchange." },
-      "redirectUri": { "type": "string", "description": "OAuth redirect URI registered with the X app." },
-      "bearerToken": { "type": "string", "description": "Optional bearer token for read-oriented fallback paths when the target endpoint supports app auth." },
-      "accessToken": { "type": "string", "description": "Optional user access token if supplying tokens manually instead of OAuth connect." },
-      "refreshToken": { "type": "string", "description": "Optional user refresh token for persisted OAuth sessions." },
-      "userId": { "type": "string" },
-      "approvalMode": { "type": "string", "enum": ["always"] },
-      "draftsFilePath": { "type": "string", "description": "Stable local path for persisted draft records." },
-      "sessionFilePath": { "type": "string", "description": "Stable local path for persisted OAuth session state and tokens." }
+      "apiBaseUrl": {
+        "type": "string"
+      },
+      "uploadApiBaseUrl": {
+        "type": "string"
+      },
+      "clientId": {
+        "type": "string",
+        "description": "X app client ID used for OAuth."
+      },
+      "clientSecret": {
+        "type": "string",
+        "description": "X app client secret used for OAuth token exchange."
+      },
+      "redirectUri": {
+        "type": "string",
+        "description": "OAuth redirect URI registered with the X app."
+      },
+      "bearerToken": {
+        "type": "string",
+        "description": "Optional bearer token for read-oriented fallback paths when the target endpoint supports app auth."
+      },
+      "accessToken": {
+        "type": "string",
+        "description": "Optional user access token if supplying tokens manually instead of OAuth connect."
+      },
+      "refreshToken": {
+        "type": "string",
+        "description": "Optional user refresh token for persisted OAuth sessions."
+      },
+      "userId": {
+        "type": "string"
+      },
+      "approvalMode": {
+        "type": "string",
+        "enum": [
+          "always"
+        ]
+      },
+      "draftsFilePath": {
+        "type": "string",
+        "description": "Stable local path for persisted draft records."
+      },
+      "sessionFilePath": {
+        "type": "string",
+        "description": "Stable local path for persisted OAuth session state and tokens."
+      }
     }
+  },
+  "providerAuthEnvVars": {
+    "x": [
+      "X_CLIENT_ID",
+      "X_CLIENT_SECRET",
+      "X_REDIRECT_URI",
+      "X_BEARER_TOKEN",
+      "X_ACCESS_TOKEN",
+      "X_REFRESH_TOKEN"
+    ]
   }
 }
