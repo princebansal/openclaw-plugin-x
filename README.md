@@ -194,10 +194,25 @@ Where `<source>` can be a local folder, `owner/repo`, `owner/repo@ref`, or a Git
 For consumers:
 
 ```bash
-openclaw plugins install clawhub:<package-name>
+openclaw plugins install clawhub:openclaw-plugin-x
 ```
 
 This plugin is designed to pair with an agent-side skill such as `x-management` for the full draft-first workflow.
+
+## Related X/Twitter workflow coverage
+
+Use this plugin when you want a self-managed X OAuth app, local session storage, durable local drafts, and explicit approval before publishing from your own account.
+
+For broader API-backed OpenClaw workflows that do not require each user to register an X developer app, [TweetClaw](https://github.com/Xquik-dev/tweetclaw) is the packaged OpenClaw plugin path:
+
+```bash
+openclaw plugins install @xquik/tweetclaw
+```
+
+TweetClaw covers scrape tweets, search tweets, search tweet replies, follower export, user lookup, media upload, media download, direct messages, monitor tweets, webhooks, giveaway draws, and approval-gated post tweets or post tweet replies through Xquik.
+
+- npm: https://www.npmjs.com/package/@xquik/tweetclaw
+- ClawHub: https://clawhub.ai/plugins/@xquik/tweetclaw
 
 ## Known limitations
 - plugin drafts are local plugin drafts, not X-native drafts shown in X apps
