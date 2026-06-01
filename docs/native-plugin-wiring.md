@@ -6,9 +6,11 @@ This repo now has:
 - OpenClaw package metadata in `package.json`
 - a buildable SDK entrypoint in `src/plugin-entry.ts`
 - buildable typed core logic in `src/`
-- durable draft/session/approval scaffold
+- durable draft/session/approval storage
+- a ClawHub-published package
+- live validation of authenticated reads, approval-gated publish, and multi-account `accountId` handling
 
-It still does **not** have end-to-end proof that the plugin entrypoint has been validated against the installed OpenClaw runtime.
+It still needs repeated install/load validation from the distributable artifact as the runtime and package surface evolve.
 
 ## Remaining validation risk
 A real native plugin entrypoint is only trustworthy when all of these are true:
@@ -21,9 +23,10 @@ In this repo right now:
 - `openclaw` is a package dependency
 - `@sinclair/typebox` is installed
 - the entrypoint builds locally
-- but no live install/load validation has been run yet
+- ClawHub package validation/source linking succeeds
+- the active local OpenClaw runtime has exercised the tool surface
 
-So the code now looks materially closer to real, but runtime proof is still the missing step.
+So the code is real, while packaged-runtime validation remains a release hygiene step.
 
 ## Honest next step
 ### 1. Validate the existing SDK entrypoint
@@ -41,7 +44,6 @@ Then test with one of:
 Proceed to:
 - plugin-config-to-runtime wiring validation
 - automatic OAuth callback flow
-- media upload transport
 - further publish/read hardening
 
 ## Recommended immediate implementation order

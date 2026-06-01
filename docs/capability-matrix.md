@@ -6,13 +6,17 @@
 | OAuth auth URL generation | `x.account.auth_url` | Implemented | Generates/stores PKCE pending state |
 | OAuth manual completion | `x.account.complete` | Implemented | Accepts code or redirect URL; callback HTTP route still not wired |
 | Authenticated profile read | `x.account.me` | Implemented | Calls `/2/users/me` with user auth |
+| Multi-account sessions | `accountId` parameter | Implemented, proven | Sessions are keyed by exact `accountId`; verified with `default` and `dontdieeveryday` |
 | Followers list read | `x.followers.list` | Implemented | Calls `/2/users/{id}/followers` with user auth; requires `follows.read` in the connected OAuth scope set |
+| Recent post search | `x.posts.search` | Implemented, proven | Authenticated recent search; follows X recent-search limits |
+| User timeline search | `x.user_posts.search` | Implemented | Paginates a user timeline and filters locally for older own-post lookup |
 | Persistent draft create | `x.post.create` | Implemented | Stores durable draft record |
 | Persistent reply draft | `x.post.reply` | Implemented | Requires target id/url |
 | Persistent quote draft | `x.post.quote` | Implemented | Requires target id/url |
 | Persistent thread draft | `x.post.thread` | Implemented | Stores ordered draft steps |
 | Explicit approval record | `x.post.approve` | Implemented | Marks stored draft as approved |
 | Approved single-post publish | `x.post.publish` | Implemented, constrained by X policy | Real X write path; requires approved draft + valid user token, but some reply publishes can still be rejected by X policy/account restrictions even after plugin approval |
+| Account-bound approval/publish | `x.post.approve`, `x.post.publish` | Implemented, proven | Draft account mismatch is rejected; live publish proven for `accountId: dontdieeveryday` |
 | Media upload | `x.media.upload` | Implemented, proven | Chunked v2 upload flow with metadata/alt text |
 | URL resolution | `x.util.resolve_url` | Implemented | Supports x.com and twitter.com post URLs |
 | Own timeline read | `x.timeline.me` | Implemented, proven | Fetches latest own tweets with normalization |
@@ -24,4 +28,4 @@
 | Bookmark / remove bookmark | `x.engagement.bookmark` | Stubbed | Planning only |
 | OAuth callback flow | internal auth | Partial | Manual completion exists; automatic callback handling does not |
 | Thread publish | `x.post.publish` | Implemented, proven | Publishes approved thread drafts by chaining replies |
-| OpenClaw SDK tool registration | plugin entrypoint | Implemented, proven locally | Buildable entrypoint exists and active plugin behavior was validated in-session |
+| OpenClaw SDK tool registration | plugin entrypoint | Implemented, proven locally | Buildable entrypoint exists, active plugin behavior was validated in-session, and ClawHub package validation succeeded |

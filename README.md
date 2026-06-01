@@ -2,16 +2,18 @@
 
 Draft-first X/Twitter management plugin for OpenClaw.
 
-This package has been proven locally for the core single-account workflow:
+This package has been proven locally for the core draft-first workflow:
 - OAuth PKCE connect flow with manual code/redirect completion
 - authenticated reads
 - follower-list reads
+- account-scoped recent search and user timeline search
 - durable local drafts
 - explicit approval recording
 - approval-gated publish for single posts and threads
 - media upload and media-backed publish
+- multi-account OAuth sessions with account-bound drafts and publish checks
 
-It is **real**, but it is **not fully productized** yet. The main remaining gaps are release polish, install/load validation in a public-facing runtime path, and automatic OAuth callback handling.
+It is **real**, but it is **not fully productized** yet. The main remaining gaps are automatic OAuth callback handling and continued packaged-runtime validation after each release.
 
 ## Current status
 
@@ -34,6 +36,7 @@ It is **real**, but it is **not fully productized** yet. The main remaining gaps
 - `x_post_publish` for approved single-post drafts and approved thread drafts
 - `x_media_upload`
 - media-backed single-post publish
+- live publish from a non-default account using explicit `accountId`
 - X/Twitter post URL resolution
 
 ### Not done yet
@@ -161,7 +164,9 @@ You can configure per-account overrides under `accounts` while keeping shared de
 }
 ```
 
-Each OAuth session is stored by `accountId`, and every draft is stamped with the account that created it. Approval and publish reject mismatched accounts, so a draft from one account cannot be accidentally published from another.
+Each OAuth session is stored by exact `accountId`, and every draft is stamped with the account that created it. Approval and publish reject mismatched accounts, so a draft from one account cannot be accidentally published from another.
+
+Important: `accountId` is a local slot id, not the X username unless you choose to make it one. Similar ids such as `dontdieeveryday` and `dont-die-everyday` can point at different persisted sessions. Always verify a non-default account with `x_account_me({ accountId })` before publishing.
 
 ## Tool surface
 

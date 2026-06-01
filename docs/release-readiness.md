@@ -6,6 +6,7 @@ This is a practical release-readiness assessment for `openclaw-plugin-x`, based 
 
 ### Ready now
 - GitHub repo exists and is pushed
+- ClawHub package publish works
 - `package.json` contains OpenClaw metadata
 - `openclaw.plugin.json` exists
 - entrypoint uses `definePluginEntry`
@@ -14,6 +15,8 @@ This is a practical release-readiness assessment for `openclaw-plugin-x`, based 
 - typecheck passes
 - `npm pack --dry-run` passes
 - secret audit found no concrete credential values in the repo
+- ClawHub package validation/source linking succeeds
+- multi-account OAuth and account-bound draft/publish flow has been proven live
 
 ### Should fix or validate before public plugin release
 - perform a true install/load validation from packed artifact or equivalent installable source
@@ -22,8 +25,7 @@ This is a practical release-readiness assessment for `openclaw-plugin-x`, based 
 - confirm at least one tool call succeeds after that install
 - confirm `openclaw.plugin.json` version matches `package.json`
 - confirm `plugin.manifest.json` version matches `package.json`
-- decide final public publish route for the plugin: ClawHub, npm, or both
-- ensure the machine used for plugin publishing has the newer ClawHub CLI if using the documented `clawhub package publish ...` flow
+- monitor ClawHub package scan completion after publish
 
 ### Nice to have later
 - richer manifest metadata for setup/onboarding/discovery if desired
@@ -39,8 +41,8 @@ This is a practical release-readiness assessment for `openclaw-plugin-x`, based 
 - [x] `definePluginEntry(...)` is used
 - [x] focused import paths are used
 - [x] `npm pack --dry-run` succeeds
-- [ ] `openclaw.plugin.json` version checked against `package.json`
-- [ ] `plugin.manifest.json` version checked against `package.json`
+- [x] `openclaw.plugin.json` version checked against `package.json`
+- [x] `plugin.manifest.json` version checked against `package.json`
 
 ### Validation
 - [x] `npm run check`
@@ -51,28 +53,23 @@ This is a practical release-readiness assessment for `openclaw-plugin-x`, based 
 ### Runtime honesty
 - [x] README states missing automatic OAuth callback handling
 - [x] README states engagement actions are not live
-- [x] README states thread publish is not implemented
+- [x] README states thread publish is implemented for approved thread drafts
 - [x] README frames the plugin as real but not fully productized
 
 ### Publish path reality
 - Docs say external plugins can be published through ClawHub or npm.
-- The current machine's installed `clawhub` CLI is older and supports skill publishing, but does not expose `clawhub package publish`.
-- Therefore, plugin release is blocked on either:
-  - newer ClawHub CLI, or
-  - npm route, or
-  - another machine/session with newer ClawHub support.
+- Current local `clawhub` supports `clawhub package publish`.
+- The plugin is published on ClawHub as `openclaw-plugin-x`; npm remains optional.
 
 ## Recommendation
 
-### Skill
-Publish sooner. It is structurally simple and already in good shape for ClawHub-style release once authenticated.
-
 ### Plugin
-Treat the GitHub repo as available now, but do one more release-hardening pass before calling it fully public-release ready.
+Treat the GitHub repo and ClawHub package as available now, while keeping release notes honest about manual OAuth callback completion and early packaged-runtime validation.
 
-Minimum bar before plugin release:
-1. install from packed artifact or equivalent external install path
-2. verify plugin discovery/load in OpenClaw
-3. run at least one real tool smoke test after install
-4. confirm manifest versions align
-5. use the final intended publish route cleanly
+Minimum bar before each future plugin release:
+1. run `npm run check`
+2. run `npm run build`
+3. run `npm pack --dry-run`
+4. verify manifest versions align
+5. publish to GitHub and ClawHub from the same source commit
+6. inspect ClawHub package metadata and monitor scan status

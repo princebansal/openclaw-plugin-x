@@ -28,9 +28,13 @@ Use this before any public npm/plugin-manifest/ClawHub-style release.
 - [ ] `x_account_auth_url` returns a usable auth URL
 - [ ] `x_account_complete` succeeds via auth code or redirect URL
 - [ ] refreshed session persists to the configured session store
+- [ ] for every non-default account, `x_account_me({ accountId })` returns the expected X username before publish
 
 ## 5. Read-path smoke test
 - [ ] `x_account_me`
+- [ ] `x_posts_search`
+- [ ] `x_user_posts_search`
+- [ ] `x_followers_list`
 - [ ] `x_timeline_me`
 - [ ] `x_timeline_mentions`
 - [ ] `x_post_get`
@@ -45,6 +49,7 @@ Use this before any public npm/plugin-manifest/ClawHub-style release.
 - [ ] `x_post_approve`
 - [ ] `x_post_publish` succeeds for an approved single-post draft, or the release notes/README clearly document any current X-side policy restrictions observed during publish attempts
 - [ ] `x_post_publish` succeeds for an approved thread draft
+- [ ] account-bound drafts reject approval/publish attempts with the wrong `accountId`
 
 ## 7. Media smoke test
 - [ ] `x_media_upload` succeeds for a representative file
@@ -55,6 +60,7 @@ Use this before any public npm/plugin-manifest/ClawHub-style release.
 - [ ] README does not imply automatic OAuth callback support
 - [ ] README does not imply live engagement actions exist
 - [ ] README describes thread publish honestly and does not overstate its validation level
+- [ ] README describes multi-account `accountId` behavior and account-bound drafts honestly
 - [ ] implementation-status docs still match reality
 - [ ] known limitations are still accurate
 

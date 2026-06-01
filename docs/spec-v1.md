@@ -1,7 +1,7 @@
 # OpenClaw X Plugin — v1 Spec
 
 ## Goal
-Provide a draft-first, approval-gated OpenClaw plugin foundation for managing an X/Twitter account from OpenClaw.
+Provide a draft-first, approval-gated OpenClaw plugin foundation for managing one or more X/Twitter accounts from OpenClaw.
 
 ## Product stance
 - Start Prince-first
@@ -20,7 +20,12 @@ Provide a draft-first, approval-gated OpenClaw plugin foundation for managing an
 - typed internal router and client structure
 - native OpenClaw plugin entrypoint
 - OAuth/session architecture with durable session persistence and refresh support
-- single-post guarded publish primitive
+- multi-account session storage keyed by exact `accountId`
+- account-bound drafts, approval, and publish
+- guarded publish primitives for posts, replies, quotes, and threads
+- account-scoped recent search and user timeline search
+- follower-list reads
+- media upload and media-backed publish
 
 ## v1 out of scope
 - autonomous posting
@@ -38,6 +43,12 @@ Provide a draft-first, approval-gated OpenClaw plugin foundation for managing an
 
 ## Planned tool surface
 - `x.account.connect`
+- `x.account.auth_url`
+- `x.account.complete`
+- `x.account.me`
+- `x.followers.list`
+- `x.posts.search`
+- `x.user_posts.search`
 - `x.post.create`
 - `x.post.reply`
 - `x.post.quote`
@@ -61,6 +72,7 @@ Use OpenClaw plugin config for:
 - redirect uri
 - api base url
 - approval mode
+- optional per-account overrides under `accounts`
 - optional draft store location
 - optional session store location
 
@@ -68,6 +80,7 @@ Use OpenClaw plugin config for:
 Use a minimal local file store now, later replaceable with runtime store / sqlite:
 - pending drafts
 - approval state
+- account id for every draft
 - timestamps
 - minimal metadata
 
@@ -107,10 +120,9 @@ For OAuth and runtime handoff work:
 
 ### Phase 3
 - automatic OAuth callback flow
-- media upload transport
 - deeper read/context expansion
 
 ### Phase 4
-- harden guarded publish path
-- extend publish beyond single-post drafts if needed
+- continue hardening guarded publish path
+- add live engagement actions if they can remain approval-gated
 - document setup and connection flow
