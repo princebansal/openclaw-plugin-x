@@ -2,13 +2,14 @@
   "id": "openclaw-plugin-x",
   "name": "OpenClaw X Plugin",
   "description": "OpenClaw plugin for X/Twitter with OAuth account connection, authenticated reads (including followers), durable drafts, approval-gated publish, and local session/draft persistence.",
-  "version": "0.2.5",
+  "version": "0.2.9",
   "entry": "dist/plugin-entry.js",
   "setup": {
     "summary": "Requires your own X developer app credentials. Stores OAuth session state and drafts on the local machine.",
     "steps": [
       "Set X clientId and redirectUri, plus clientSecret for OAuth token exchange.",
       "Use stable local state paths for sessionFilePath and draftsFilePath, outside the plugin install directory.",
+      "For multiple accounts, pass accountId to tools and optionally configure per-account overrides under accounts.",
       "Connect the account with x_account_auth_url and x_account_complete before using authenticated reads or publish tools.",
       "Follower-list reads require the OAuth scope follows.read; older sessions must reconnect after upgrading."
     ],
@@ -53,7 +54,7 @@
           "offline.access",
           "media.write"
         ],
-        "notes": "OAuth tokens are persisted only to the configured local sessionFilePath; drafts are persisted only to draftsFilePath.",
+        "notes": "OAuth tokens are persisted only to the configured local sessionFilePath; drafts are persisted only to draftsFilePath. Multi-account sessions and drafts are keyed by accountId.",
         "authMethods": [
           "oauth2-pkce",
           "bearer-token",
@@ -100,6 +101,8 @@
       "x_account_complete",
       "x_account_me",
       "x_followers_list",
+      "x_posts_search",
+      "x_user_posts_search",
       "x_post_create",
       "x_post_reply",
       "x_post_quote",
@@ -211,6 +214,14 @@
       "sessionFilePath": {
         "type": "string",
         "description": "Stable local path for persisted OAuth session state and tokens."
+      },
+      "accounts": {
+        "type": "object",
+        "description": "Optional per-account config overrides keyed by accountId.",
+        "additionalProperties": {
+          "type": "object",
+          "additionalProperties": true
+        }
       }
     }
   },

@@ -5,6 +5,15 @@ import { getBearerCredential, getClientCredential, getRefreshCredential, getUser
 export { getSession, setSession, InMemorySessionStore } from './session-store.js';
 export type { SessionStore } from './session-store.js';
 
+type OAuthDebugContext = {
+  accountId?: string;
+  operation?: 'authorization_code' | 'refresh_token';
+  hasPendingOAuth?: boolean;
+  hasCodeVerifier?: boolean;
+  stateProvided?: boolean;
+  stateMatched?: boolean;
+};
+
 export function buildConnectPlan(config: AccountConfig) {
   const userCredential = getUserCredential(config);
   const bearerCredential = getBearerCredential(config);
@@ -81,6 +90,7 @@ export async function exchangeAuthorizationCode(params: {
   config: AccountConfig;
   code: string;
   codeVerifier: string;
+  debugContext?: OAuthDebugContext;
 }): Promise<OAuthTokenResponse> {
   if (!params.config.clientId || !params.config.redirectUri) {
     throw new XPluginError('CONFIG_ERROR', 'OAuth token exchange requires clientId and redirectUri.');
@@ -99,11 +109,10 @@ export async function exchangeAuthorizationCode(params: {
     'Content-Type': 'application/x-www-form-urlencoded',
   };
 
+  const authMode = clientCredential ? 'client_secret_basic' : 'client_id_body';
+
   if (clientCredential) {
-    const encodedClientId = encodeURIComponent(params.config.clientId);
-    const encodedClientCredential = encodeURIComponent(clientCredential);
-    const basic = Buffer.from(`${encodedClientId}:${encodedClientCredential}`, 'utf8').toString('base64');
-    headers.Authorization = `Basic ${basic}`;
+    headers.Authorization = buildBasicAuthHeader(params.config.clientId, clientCredential);
     body.delete('client_secret');
   } else {
     body.set('client_id', params.config.clientId);
@@ -119,11 +128,26 @@ export async function exchangeAuthorizationCode(params: {
   const parsed = tryParseJson(raw) as OAuthTokenResponse | undefined;
 
   if (!response.ok) {
+    const diagnostics = buildOAuthDiagnostics({
+      config: params.config,
+      headers,
+      body,
+      authMode,
+      responseStatus: response.status,
+      response: parsed ?? raw,
+      debugContext: {
+        ...params.debugContext,
+        operation: 'authorization_code',
+        hasCodeVerifier: Boolean(params.codeVerifier),
+      },
+    });
+    emitOAuthDiagnostics(diagnostics);
     throw new XPluginError('API_ERROR', `OAuth token exchange failed with ${response.status}.`, {
       retryable: response.status >= 500 || response.status === 429,
       details: {
         status: response.status,
         response: parsed ?? raw,
+        diagnostics,
       },
     });
   }
@@ -134,6 +158,7 @@ export async function exchangeAuthorizationCode(params: {
 export async function refreshAccessToken(params: {
   config: AccountConfig;
   refreshCredential: string;
+  debugContext?: OAuthDebugContext;
 }): Promise<OAuthTokenResponse> {
   if (!params.config.clientId) {
     throw new XPluginError('CONFIG_ERROR', 'OAuth refresh requires clientId.');
@@ -149,11 +174,9 @@ export async function refreshAccessToken(params: {
   };
 
   const clientCredential = getClientCredential(params.config);
+  const authMode = clientCredential ? 'client_secret_basic' : 'client_id_body';
   if (clientCredential) {
-    const encodedClientId = encodeURIComponent(params.config.clientId);
-    const encodedClientCredential = encodeURIComponent(clientCredential);
-    const basic = Buffer.from(`${encodedClientId}:${encodedClientCredential}`, 'utf8').toString('base64');
-    headers.Authorization = `Basic ${basic}`;
+    headers.Authorization = buildBasicAuthHeader(params.config.clientId, clientCredential);
   } else {
     body.set('client_id', params.config.clientId);
   }
@@ -168,11 +191,25 @@ export async function refreshAccessToken(params: {
   const parsed = tryParseJson(raw) as OAuthTokenResponse | undefined;
 
   if (!response.ok) {
+    const diagnostics = buildOAuthDiagnostics({
+      config: params.config,
+      headers,
+      body,
+      authMode,
+      responseStatus: response.status,
+      response: parsed ?? raw,
+      debugContext: {
+        ...params.debugContext,
+        operation: 'refresh_token',
+      },
+    });
+    emitOAuthDiagnostics(diagnostics);
     throw new XPluginError('API_ERROR', `OAuth refresh failed with ${response.status}.`, {
       retryable: response.status >= 500 || response.status === 429,
       details: {
         status: response.status,
         response: parsed ?? raw,
+        diagnostics,
       },
     });
   }
@@ -211,6 +248,78 @@ function tryParseJson(raw: string): unknown {
   } catch {
     return undefined;
   }
+}
+
+function buildBasicAuthHeader(clientId: string, clientCredential: string): string {
+  // OAuth 2.0 client_secret_basic uses form-encoded username/password before
+  // joining them with ':'. This keeps client ids containing ':' unambiguous.
+  const encodedClientId = oauthFormEncode(clientId);
+  const encodedClientCredential = oauthFormEncode(clientCredential);
+  const basic = Buffer.from(`${encodedClientId}:${encodedClientCredential}`, 'utf8').toString('base64');
+  return `Basic ${basic}`;
+}
+
+function oauthFormEncode(value: string): string {
+  return encodeURIComponent(value).replace(/%20/g, '+');
+}
+
+function buildOAuthDiagnostics(params: {
+  config: AccountConfig;
+  headers: Record<string, string>;
+  body: URLSearchParams;
+  authMode: 'client_secret_basic' | 'client_id_body';
+  responseStatus: number;
+  response: unknown;
+  debugContext?: OAuthDebugContext;
+}) {
+  return {
+    accountId: params.debugContext?.accountId ?? 'default',
+    operation: params.debugContext?.operation,
+    authMode: params.authMode,
+    authorizationHeaderPresent: Boolean(params.headers.Authorization),
+    authorizationScheme: params.headers.Authorization?.split(/\s+/, 1)[0],
+    clientIdPresent: Boolean(params.config.clientId),
+    clientIdLength: params.config.clientId?.length ?? 0,
+    clientIdFingerprint: params.config.clientId ? fingerprint(params.config.clientId) : undefined,
+    clientSecretPresent: Boolean(getClientCredential(params.config)),
+    tokenUrlHost: safeUrlHost(params.config.oauthTokenUrl),
+    requestBodyKeys: Array.from(params.body.keys()).sort(),
+    hasPendingOAuth: params.debugContext?.hasPendingOAuth,
+    hasCodeVerifier: params.debugContext?.hasCodeVerifier,
+    stateProvided: params.debugContext?.stateProvided,
+    stateMatched: params.debugContext?.stateMatched,
+    responseStatus: params.responseStatus,
+    responseError: summarizeOAuthError(params.response),
+  };
+}
+
+function emitOAuthDiagnostics(diagnostics: ReturnType<typeof buildOAuthDiagnostics>): void {
+  console.warn('[openclaw-plugin-x] OAuth token request failed', diagnostics);
+}
+
+function fingerprint(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex').slice(0, 12);
+}
+
+function safeUrlHost(value: string): string | undefined {
+  try {
+    return new URL(value).host;
+  } catch {
+    return undefined;
+  }
+}
+
+function summarizeOAuthError(response: unknown): unknown {
+  if (!response || typeof response !== 'object') {
+    return response;
+  }
+  const record = response as Record<string, unknown>;
+  return {
+    ...(typeof record.error === 'string' ? { error: record.error } : {}),
+    ...(typeof record.error_description === 'string' ? { error_description: record.error_description } : {}),
+    ...(typeof record.detail === 'string' ? { detail: record.detail } : {}),
+    ...(typeof record.title === 'string' ? { title: record.title } : {}),
+  };
 }
 
 function base64Url(input: Buffer): string {

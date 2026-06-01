@@ -34,6 +34,7 @@ function saveStore(filePath: string, store: DraftStoreShape): void {
 
 export function createDraftRecord(input: {
   filePath: string;
+  accountId: string;
   intent: DraftRecord['intent'];
   draft?: PostDraft;
   thread?: PostDraft[];
@@ -43,6 +44,7 @@ export function createDraftRecord(input: {
   const store = ensureStore(input.filePath);
   const record: DraftRecord = {
     id: crypto.randomUUID(),
+    accountId: input.accountId,
     createdAt: now,
     updatedAt: now,
     status: 'draft',
@@ -69,10 +71,25 @@ export function getDraftRecord(filePath: string, draftId: string): DraftRecord {
   return record;
 }
 
+export function assertDraftAccount(record: DraftRecord, accountId: string): void {
+  const draftAccountId = record.accountId ?? 'default';
+  if (draftAccountId === accountId) {
+    return;
+  }
+
+  throw new XPluginError('AUTH_REQUIRED', 'Draft belongs to a different X account.', {
+    details: {
+      draftId: record.id,
+      draftAccountId,
+      requestedAccountId: accountId,
+    },
+  });
+}
+
 export function approveDraftRecord(
   filePath: string,
   draftId: string,
-  approval?: { approvedBy?: string; note?: string },
+  approval?: { accountId?: string; approvedBy?: string; note?: string },
 ): DraftRecord {
   const store = ensureStore(filePath);
   const index = store.drafts.findIndex((draft) => draft.id === draftId);
@@ -83,6 +100,7 @@ export function approveDraftRecord(
   }
 
   const record = store.drafts[index];
+  assertDraftAccount(record, approval?.accountId ?? 'default');
   const approvedAt = new Date().toISOString();
   const updated: DraftRecord = {
     ...record,

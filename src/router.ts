@@ -10,7 +10,7 @@ import {
 } from './auth.js';
 import { XApiHttpClient } from './client.js';
 import { loadAccountConfig, assertOAuthConfigPresent, assertReadConfigPresent } from './config.js';
-import { approveDraftRecord, createDraftRecord, getDraftRecord, publishDraftRecord } from './drafts.js';
+import { approveDraftRecord, assertDraftAccount, createDraftRecord, getDraftRecord, publishDraftRecord } from './drafts.js';
 import { normalizeError, XPluginError } from './errors.js';
 import { buildEngagementPlan } from './services/engagement.js';
 import { buildMediaDraft, uploadMediaV2 } from './services/media.js';
@@ -29,14 +29,16 @@ function fail(action: XAction, error: unknown, dryRun = true, warnings: string[]
 
 export async function routeToolRequest(request: ToolRequest): Promise<ToolResponse> {
   try {
-    const baseConfig = loadAccountConfig(request.pluginConfig ?? {});
-    const session = getSession(baseConfig.sessionFilePath);
+    const accountId = getRequestAccountId(request.input);
+    const baseConfig = loadAccountConfig(request.pluginConfig ?? {}, accountId);
+    const session = getSession(baseConfig.sessionFilePath, accountId);
     const config = withSessionTokens(baseConfig, session);
     const client = new XApiHttpClient(config);
 
     switch (request.action) {
       case 'x.account.connect': {
         return ok(request.action, {
+          accountId,
           configPresent: Boolean(config.clientId || getBearerCredential(config) || getUserCredential(config)),
           approvalMode: config.approvalMode,
           draftsFilePath: config.draftsFilePath,
@@ -48,13 +50,14 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
       case 'x.account.auth_url': {
         assertOAuthConfigPresent(config);
         const pending = buildAuthorizationUrl(config);
-        const existing = session ?? { accountId: 'default', scopes: [] };
+        const existing = session ?? { accountId, scopes: [] };
         const stored = setSession(config.sessionFilePath, {
           ...existing,
           pendingOAuth: pending,
           scopes: existing.scopes?.length ? existing.scopes : pending.scopes,
         });
         return ok(request.action, {
+          accountId,
           authorizeUrl: pending.authorizeUrl,
           state: pending.state,
           redirectUri: pending.redirectUri,
@@ -70,6 +73,8 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
         }
 
         const parsed = parseOAuthCompletionInput(input);
+        const stateProvided = Boolean(parsed.state);
+        const stateMatched = parsed.state ? parsed.state === pending.state : undefined;
         if (parsed.state && parsed.state !== pending.state) {
           throw new XPluginError('AUTH_REQUIRED', 'OAuth state mismatch.', {
             details: { expected: pending.state, received: parsed.state },
@@ -80,6 +85,13 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           config,
           code: parsed.code,
           codeVerifier: pending.codeVerifier,
+          debugContext: {
+            accountId,
+            hasPendingOAuth: Boolean(pending),
+            hasCodeVerifier: Boolean(pending.codeVerifier),
+            stateProvided,
+            ...(stateMatched !== undefined ? { stateMatched } : {}),
+          },
         });
 
         const configForLookup = { ...config };
@@ -89,6 +101,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           : undefined;
 
         const finalized = finalizeSession({
+          accountId,
           existing: session,
           token,
           pendingOAuth: pending,
@@ -99,6 +112,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
         });
         const stored = setSession(config.sessionFilePath, finalized);
         return ok(request.action, {
+          accountId,
           connected: true,
           session: redactSession(stored),
           me,
@@ -114,7 +128,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
             ...(me.username ? { username: me.username } : {}),
           });
         }
-        return ok(request.action, { me }, false);
+        return ok(request.action, { accountId, me }, false);
       }
       case 'x.followers.list': {
         const input = request.input as {
@@ -177,6 +191,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
 
         const followers = Array.from(followersById.values());
         return ok(request.action, {
+          accountId,
           userId: targetUserId,
           followers,
           usernames: followers.map((follower) => follower.username),
@@ -189,14 +204,132 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           ? [`Stopped after ${pageCount} page(s). Use nextPaginationToken to continue or increase maxPages.`]
           : []);
       }
+      case 'x.posts.search': {
+        const input = request.input as {
+          query?: string;
+          maxResults?: number;
+          paginationToken?: string;
+        };
+        const query = normalizeSearchQuery(input.query);
+        const effectiveSession = await ensureFreshSession(config, session);
+        const effectiveConfig = withSessionTokens(config, effectiveSession);
+        const searchClient = new XApiHttpClient(effectiveConfig);
+
+        const response = await searchClient.request<{
+          data?: Record<string, unknown>[];
+          includes?: Record<string, unknown>;
+          meta?: Record<string, unknown>;
+        }>({
+          method: 'GET',
+          path: buildRecentSearchPath({
+            query,
+            maxResults: normalizeTweetPageSize(input.maxResults, 10),
+            ...(input.paginationToken?.trim() ? { paginationToken: input.paginationToken.trim() } : {}),
+          }),
+          authMode: 'user',
+        });
+
+        const normalized = normalizeTimelineResponse(response);
+        const nextPaginationToken = typeof response.meta?.next_token === 'string'
+          ? response.meta.next_token
+          : undefined;
+        return ok(request.action, {
+          accountId,
+          query,
+          posts: normalized.posts,
+          includes: normalized.includes,
+          meta: normalized.meta,
+          ...(nextPaginationToken ? { nextPaginationToken } : {}),
+          response,
+        }, false);
+      }
+      case 'x.user_posts.search': {
+        const input = request.input as {
+          query?: string;
+          userId?: string;
+          maxResults?: number;
+          maxPages?: number;
+          limit?: number;
+          paginationToken?: string;
+        };
+        const query = normalizeSearchQuery(input.query);
+        const effectiveSession = await ensureFreshSession(config, session);
+        const effectiveConfig = withSessionTokens(config, effectiveSession);
+        const targetUserId = input.userId?.trim() || effectiveSession?.userId || effectiveConfig.userId;
+        if (!targetUserId) {
+          throw new XPluginError('AUTH_REQUIRED', 'Connected user id is missing. Reconnect the X account first or pass userId.');
+        }
+
+        const pageSize = normalizeTweetPageSize(input.maxResults, 100);
+        const maxPages = normalizeMaxPages(input.maxPages, 5);
+        const limit = normalizeSearchLimit(input.limit);
+        const userPostsClient = new XApiHttpClient(effectiveConfig);
+
+        let paginationToken = input.paginationToken?.trim() || undefined;
+        let pageCount = 0;
+        let nextPaginationToken: string | undefined;
+        const matches: ReturnType<typeof normalizeTimelineResponse>['posts'] = [];
+        const pageSummaries: Array<{ page: number; resultCount: number; matchCount: number; nextPaginationToken?: string }> = [];
+
+        do {
+          const response = await userPostsClient.request<{
+            data?: Record<string, unknown>[];
+            includes?: Record<string, unknown>;
+            meta?: Record<string, unknown>;
+          }>({
+            method: 'GET',
+            path: buildUserTweetsPath(targetUserId, {
+              maxResults: pageSize,
+              ...(paginationToken ? { paginationToken } : {}),
+            }),
+            authMode: 'user',
+          });
+
+          const normalized = normalizeTimelineResponse(response);
+          const pageMatches = normalized.posts.filter((post) => matchesSearchQuery(post.text ?? '', query));
+          const remaining = limit - matches.length;
+          matches.push(...pageMatches.slice(0, remaining));
+
+          nextPaginationToken = typeof response.meta?.next_token === 'string'
+            ? response.meta.next_token
+            : undefined;
+          pageCount += 1;
+          pageSummaries.push({
+            page: pageCount,
+            resultCount: normalized.posts.length,
+            matchCount: pageMatches.length,
+            ...(nextPaginationToken ? { nextPaginationToken } : {}),
+          });
+          paginationToken = nextPaginationToken;
+        } while (paginationToken && pageCount < maxPages && matches.length < limit);
+
+        return ok(request.action, {
+          accountId,
+          userId: targetUserId,
+          query,
+          posts: matches,
+          matchedCount: matches.length,
+          pageSize,
+          pageCount,
+          maxPages,
+          limit,
+          ...(nextPaginationToken ? { nextPaginationToken } : {}),
+          partial: Boolean(nextPaginationToken),
+          pageSummaries,
+        }, false, nextPaginationToken
+          ? [`Stopped after ${pageCount} page(s). Use nextPaginationToken to continue or increase maxPages.`]
+          : []);
+      }
       case 'x.post.create': {
         const draft = buildPostDraft(request.input as { text: string; mediaIds?: string[] });
         const record = createDraftRecord({
           filePath: config.draftsFilePath,
+          accountId,
           intent: 'post',
           draft,
         });
         return ok(request.action, {
+          accountId,
           draftId: record.id,
           intent: 'post',
           preview: buildDraftPreview(record),
@@ -215,11 +348,13 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
         const draft = buildPostDraft({ text: input.text, mediaIds: input.mediaIds });
         const record = createDraftRecord({
           filePath: config.draftsFilePath,
+          accountId,
           intent: 'reply',
           draft: { ...draft, replyToPostId: targetId },
           ...(input.replyToUrl ? { metadata: { replyToUrl: input.replyToUrl } } : {}),
         });
         return ok(request.action, {
+          accountId,
           draftId: record.id,
           intent: 'reply',
           preview: buildDraftPreview(record),
@@ -242,11 +377,13 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
         const draft = buildPostDraft({ text: input.text, mediaIds: input.mediaIds });
         const record = createDraftRecord({
           filePath: config.draftsFilePath,
+          accountId,
           intent: 'quote',
           draft: { ...draft, quotePostId: targetId },
           ...(input.quoteUrl ? { metadata: { quoteUrl: input.quoteUrl } } : {}),
         });
         return ok(request.action, {
+          accountId,
           draftId: record.id,
           intent: 'quote',
           preview: buildDraftPreview(record),
@@ -264,10 +401,12 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
         const plan = buildThreadPlan(request.input as { posts: { text: string; mediaIds?: string[] }[] });
         const record = createDraftRecord({
           filePath: config.draftsFilePath,
+          accountId,
           intent: 'thread',
           thread: plan.map((step) => step.draft),
         });
         return ok(request.action, {
+          accountId,
           draftId: record.id,
           intent: 'thread',
           preview: buildDraftPreview(record),
@@ -278,15 +417,17 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
         ]);
       }
       case 'x.post.approve': {
-        const input = request.input as { draftId: string; approvedBy?: string; note?: string };
+        const input = request.input as { accountId?: string; draftId: string; approvedBy?: string; note?: string };
         if (!input?.draftId) {
           throw new XPluginError('VALIDATION_ERROR', 'draftId is required for approval.');
         }
         const approved = approveDraftRecord(config.draftsFilePath, input.draftId, {
+          accountId,
           ...(input.approvedBy ? { approvedBy: input.approvedBy } : {}),
           ...(input.note ? { note: input.note } : {}),
         });
         return ok(request.action, {
+          accountId,
           approved,
           publishReady: true,
           note: 'Approval state is recorded. Draft can now be published via x.post.publish.',
@@ -294,7 +435,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
       }
 
       case 'x.post.publish': {
-        const input = request.input as { draftId: string };
+        const input = request.input as { accountId?: string; draftId: string };
         if (!input?.draftId) {
           throw new XPluginError('VALIDATION_ERROR', 'draftId is required for publish.');
         }
@@ -303,6 +444,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
         const effectiveConfig = withSessionTokens(config, effectiveSession);
         const publishClient = new XApiHttpClient(effectiveConfig);
         const draft = getDraftRecord(config.draftsFilePath, input.draftId);
+        assertDraftAccount(draft, accountId);
 
         if (draft.status !== 'approved') {
           throw new XPluginError('AUTH_REQUIRED', 'Draft must be approved before publishing.', {
@@ -332,6 +474,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           });
 
           return ok(request.action, {
+            accountId,
             draftId: input.draftId,
             published,
             result: {
@@ -388,6 +531,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           });
 
           return ok(request.action, {
+            accountId,
             draftId: input.draftId,
             published,
             result: {
@@ -416,7 +560,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           credential,
           media,
         });
-        return ok(request.action, { media, uploaded, liveReady: true }, false);
+        return ok(request.action, { accountId, media, uploaded, liveReady: true }, false);
       }
       case 'x.timeline.mentions':
       case 'x.timeline.me':
@@ -445,6 +589,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
 
           const normalized = normalizeTimelinePayloadOne(response);
           return ok(request.action, {
+            accountId,
             postId,
             resolved,
             post: normalized.post,
@@ -469,6 +614,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
         }
 
         if (request.action === 'x.timeline.me' || request.action === 'x.timeline.mentions') {
+          const input = request.input as { maxResults?: number; paginationToken?: string };
           const effectiveSession = await ensureFreshSession(config, session);
           const effectiveConfig = withSessionTokens(config, effectiveSession);
           const userId = effectiveSession?.userId ?? effectiveConfig.userId;
@@ -478,8 +624,14 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
 
           const timelineClient = new XApiHttpClient(effectiveConfig);
           const timelinePath = request.action === 'x.timeline.me'
-            ? `/2/users/${userId}/tweets?max_results=5&tweet.fields=created_at,author_id,conversation_id,public_metrics,referenced_tweets&expansions=author_id,referenced_tweets.id&user.fields=id,name,username`
-            : `/2/users/${userId}/mentions?max_results=5&tweet.fields=created_at,author_id,conversation_id,public_metrics,referenced_tweets&expansions=author_id,referenced_tweets.id&user.fields=id,name,username`;
+            ? buildUserTweetsPath(userId, {
+                maxResults: normalizeTweetPageSize(input.maxResults, 5),
+                ...(input.paginationToken?.trim() ? { paginationToken: input.paginationToken.trim() } : {}),
+              })
+            : buildUserMentionsPath(userId, {
+                maxResults: normalizeTweetPageSize(input.maxResults, 5),
+                ...(input.paginationToken?.trim() ? { paginationToken: input.paginationToken.trim() } : {}),
+              });
 
           const response = await timelineClient.request<{
             data?: Record<string, unknown>[];
@@ -496,12 +648,17 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           }
 
           const normalized = normalizeTimelineResponse(response);
+          const nextPaginationToken = typeof response.meta?.next_token === 'string'
+            ? response.meta.next_token
+            : undefined;
           return ok(request.action, {
+            accountId,
             userId,
             latest: normalized.latest ?? null,
             posts: normalized.posts,
             includes: normalized.includes,
             meta: normalized.meta,
+            ...(nextPaginationToken ? { nextPaginationToken } : {}),
             response,
           }, false);
         }
@@ -541,6 +698,15 @@ function parseOAuthCompletionInput(input: { code?: string; redirectUrl?: string;
   return { code, ...(state ? { state } : {}) };
 }
 
+function getRequestAccountId(input: unknown): string {
+  if (!input || typeof input !== 'object') {
+    return 'default';
+  }
+
+  const value = (input as { accountId?: unknown }).accountId;
+  return typeof value === 'string' && value.trim() ? value.trim() : 'default';
+}
+
 async function fetchAuthenticatedMe(config: ReturnType<typeof loadAccountConfig>) {
   const client = new XApiHttpClient(config);
   const response = await client.request<{ data?: { id?: string; username?: string; name?: string } }>({
@@ -570,6 +736,9 @@ async function ensureFreshSession(config: ReturnType<typeof loadAccountConfig>, 
   const refreshed = await refreshAccessToken({
     config,
     refreshCredential,
+    debugContext: {
+      accountId: current.accountId ?? 'default',
+    },
   });
 
   const next = finalizeSession({
@@ -594,7 +763,12 @@ function withSessionTokens(config: ReturnType<typeof loadAccountConfig>, session
 
 function redactSession(session?: ReturnType<typeof getSession>) {
   if (!session) return undefined;
-  const { pendingOAuth, ...safeSession } = session;
+  const {
+    pendingOAuth,
+    accessToken: _accessToken,
+    refreshToken: _refreshToken,
+    ...safeSession
+  } = session;
   return {
     ...safeSession,
     hasAccessCredential: Boolean(getUserCredential(session)),
@@ -629,6 +803,7 @@ function buildDraftPreview(record: DraftRecord) {
   if (record.intent === 'thread') {
     return {
       draftId: record.id,
+      accountId: record.accountId ?? 'default',
       intent: record.intent,
       status: record.status,
       postCount: record.thread?.length ?? 0,
@@ -641,6 +816,7 @@ function buildDraftPreview(record: DraftRecord) {
 
   return {
     draftId: record.id,
+    accountId: record.accountId ?? 'default',
     intent: record.intent,
     status: record.status,
     text: record.draft?.text ?? '',
@@ -660,6 +836,43 @@ function buildFollowersPath(userId: string, input: { maxResults: number; paginat
   }
 
   return `/2/users/${userId}/followers?${query.toString()}`;
+}
+
+function buildRecentSearchPath(input: { query: string; maxResults: number; paginationToken?: string }) {
+  const query = buildPostQueryParams(input.maxResults);
+  query.set('query', input.query);
+  if (input.paginationToken) {
+    query.set('next_token', input.paginationToken);
+  }
+
+  return `/2/tweets/search/recent?${query.toString()}`;
+}
+
+function buildUserTweetsPath(userId: string, input: { maxResults: number; paginationToken?: string }) {
+  const query = buildPostQueryParams(input.maxResults);
+  if (input.paginationToken) {
+    query.set('pagination_token', input.paginationToken);
+  }
+
+  return `/2/users/${userId}/tweets?${query.toString()}`;
+}
+
+function buildUserMentionsPath(userId: string, input: { maxResults: number; paginationToken?: string }) {
+  const query = buildPostQueryParams(input.maxResults);
+  if (input.paginationToken) {
+    query.set('pagination_token', input.paginationToken);
+  }
+
+  return `/2/users/${userId}/mentions?${query.toString()}`;
+}
+
+function buildPostQueryParams(maxResults: number) {
+  return new URLSearchParams({
+    max_results: String(maxResults),
+    'tweet.fields': 'created_at,author_id,conversation_id,public_metrics,referenced_tweets',
+    expansions: 'author_id,referenced_tweets.id',
+    'user.fields': 'id,name,username',
+  });
 }
 
 function normalizeFollowers(rows: Record<string, unknown>[]) {
@@ -687,6 +900,52 @@ function normalizeFollowers(rows: Record<string, unknown>[]) {
       };
     })
     .filter((row): row is NonNullable<typeof row> => Boolean(row));
+}
+
+function normalizeSearchQuery(value: string | undefined) {
+  const query = value?.trim();
+  if (!query) {
+    throw new XPluginError('VALIDATION_ERROR', 'query is required.');
+  }
+
+  return query;
+}
+
+function normalizeTweetPageSize(value: number | undefined, fallback: number) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  if (!Number.isInteger(value) || value < 5 || value > 100) {
+    throw new XPluginError('VALIDATION_ERROR', 'maxResults must be an integer between 5 and 100.');
+  }
+
+  return value;
+}
+
+function normalizeSearchLimit(value: number | undefined) {
+  if (value === undefined) {
+    return 10;
+  }
+
+  if (!Number.isInteger(value) || value < 1 || value > 100) {
+    throw new XPluginError('VALIDATION_ERROR', 'limit must be an integer between 1 and 100.');
+  }
+
+  return value;
+}
+
+function matchesSearchQuery(text: string, query: string) {
+  const normalizedText = text.toLocaleLowerCase();
+  return tokenizeLocalSearchQuery(query).every((token) => normalizedText.includes(token));
+}
+
+function tokenizeLocalSearchQuery(query: string) {
+  return query
+    .toLocaleLowerCase()
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
 }
 
 function normalizePageSize(value: number | undefined) {

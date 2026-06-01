@@ -4,6 +4,8 @@ export type XAction =
   | 'x.account.complete'
   | 'x.account.me'
   | 'x.followers.list'
+  | 'x.posts.search'
+  | 'x.user_posts.search'
   | 'x.post.create'
   | 'x.post.reply'
   | 'x.post.quote'
@@ -67,6 +69,7 @@ export interface AccountConfig {
   approvalMode: 'always';
   draftsFilePath: string;
   sessionFilePath: string;
+  accounts?: Record<string, Partial<AccountConfig>> | undefined;
 }
 
 export interface SessionState {
@@ -108,6 +111,7 @@ export interface PostDraft {
 
 export interface DraftRecord {
   id: string;
+  accountId?: string | undefined;
   createdAt: string;
   updatedAt: string;
   status: 'draft' | 'approved' | 'published';

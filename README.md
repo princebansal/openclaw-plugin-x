@@ -20,6 +20,8 @@ It is **real**, but it is **not fully productized** yet. The main remaining gaps
 - session persistence and token refresh handling
 - `x_account_me`
 - `x_followers_list`
+- `x_posts_search`
+- `x_user_posts_search`
 - `x_timeline_me`
 - `x_timeline_mentions`
 - `x_post_get`
@@ -137,6 +139,30 @@ Typical scope set now includes:
 
 Important: if you upgrade from an older plugin build that did not request `follows.read`, existing sessions must reconnect through the OAuth flow before follower-list reads will work.
 
+### Multiple accounts
+
+Account-sensitive tools accept an optional `accountId`. If omitted, the plugin uses `default`.
+
+You can configure per-account overrides under `accounts` while keeping shared defaults at the top level:
+
+```json
+{
+  "clientId": "shared-client-id",
+  "clientSecret": "shared-client-secret",
+  "redirectUri": "http://127.0.0.1:8787/x/callback",
+  "sessionFilePath": "~/.openclaw/state/openclaw-plugin-x/session.json",
+  "draftsFilePath": "~/.openclaw/state/openclaw-plugin-x/drafts.json",
+  "accounts": {
+    "personal": {},
+    "life": {
+      "userId": "123"
+    }
+  }
+}
+```
+
+Each OAuth session is stored by `accountId`, and every draft is stamped with the account that created it. Approval and publish reject mismatched accounts, so a draft from one account cannot be accidentally published from another.
+
 ## Tool surface
 
 ### Auth / account
@@ -147,8 +173,10 @@ Important: if you upgrade from an older plugin build that did not request `follo
 
 ### Read
 - `x_followers_list` (`userId?`, `maxResults?`, `paginationToken?`, `allPages?`, `maxPages?`)
-- `x_timeline_me`
-- `x_timeline_mentions`
+- `x_posts_search` (`query`, `maxResults?`, `paginationToken?`) - authenticated recent X search, not a full archive search
+- `x_user_posts_search` (`query`, `userId?`, `maxResults?`, `maxPages?`, `limit?`, `paginationToken?`) - account/user timeline search for older own-post lookup
+- `x_timeline_me` (`maxResults?`, `paginationToken?`)
+- `x_timeline_mentions` (`maxResults?`, `paginationToken?`)
 - `x_post_get`
 - `x_post_context`
 - `x_util_resolve_url`
@@ -168,6 +196,12 @@ Important: if you upgrade from an older plugin build that did not request `follo
 - call `x_followers_list` with `allPages: true` when you need a full follower snapshot
 - if the response returns `partial: true`, continue with `nextPaginationToken`
 - compare the returned `usernames` list against your stored prior snapshot to detect unfollowers
+
+### Post search pattern
+- use `x_posts_search` for X recent search with an account-scoped user token; it follows X recent-search semantics and may not find older posts
+- use `x_user_posts_search` when you need to find older posts from one account timeline, especially "find my own old post about..." workflows
+- `x_user_posts_search` paginates `/2/users/:id/tweets` and does local AND-token text matching, which is useful for "find my own older post about X" workflows
+- if the response returns `partial: true`, continue with `nextPaginationToken` or increase `maxPages`
 
 ### Scaffold-only engagement
 - `x_engagement_like`

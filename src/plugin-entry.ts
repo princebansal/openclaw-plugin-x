@@ -24,6 +24,7 @@ const pluginConfigZodSchema = z.object({
   userId: z.string().optional(),
   draftsFilePath: z.string().optional(),
   sessionFilePath: z.string().optional(),
+  accounts: z.record(z.record(z.unknown())).optional(),
 }).strict();
 
 
@@ -85,6 +86,13 @@ const pluginConfigSchema = {
       userId: { type: 'string' },
       draftsFilePath: { type: 'string' },
       sessionFilePath: { type: 'string' },
+      accounts: {
+        type: 'object',
+        additionalProperties: {
+          type: 'object',
+          additionalProperties: true,
+        },
+      },
     },
   },
   uiHints: {
@@ -97,6 +105,10 @@ const pluginConfigSchema = {
     draftsFilePath: { label: 'Draft store path', advanced: true },
     sessionFilePath: { label: 'Session store path', advanced: true },
   },
+};
+
+const accountIdParameter = {
+  accountId: Type.Optional(Type.String({ description: 'Configured X account id. Defaults to default.' })),
 };
 
 function json(payload: unknown) {
@@ -148,7 +160,7 @@ export default definePluginEntry({
       name: 'x_account_connect',
       label: 'X Account Connect',
       description: 'Inspect current X plugin connection/config readiness.',
-      parameters: Type.Object({}, { additionalProperties: false }),
+      parameters: Type.Object({ ...accountIdParameter }, { additionalProperties: false }),
       execute: (params) => executeAction('x.account.connect', { ...params }, pluginConfig),
     });
 
@@ -156,7 +168,7 @@ export default definePluginEntry({
       name: 'x_account_auth_url',
       label: 'X Account Auth URL',
       description: 'Generate an OAuth PKCE authorization URL for connecting an X account.',
-      parameters: Type.Object({}, { additionalProperties: false }),
+      parameters: Type.Object({ ...accountIdParameter }, { additionalProperties: false }),
       execute: (params) => executeAction('x.account.auth_url', { ...params }, pluginConfig),
     });
 
@@ -165,6 +177,7 @@ export default definePluginEntry({
       label: 'X Account Complete OAuth',
       description: 'Complete X OAuth using an authorization code or full redirect URL.',
       parameters: Type.Object({
+        ...accountIdParameter,
         code: Type.Optional(Type.String()),
         redirectUrl: Type.Optional(Type.String()),
         state: Type.Optional(Type.String()),
@@ -176,7 +189,7 @@ export default definePluginEntry({
       name: 'x_account_me',
       label: 'X Account Me',
       description: 'Fetch the authenticated X account profile using the stored user token.',
-      parameters: Type.Object({}, { additionalProperties: false }),
+      parameters: Type.Object({ ...accountIdParameter }, { additionalProperties: false }),
       execute: (params) => executeAction('x.account.me', { ...params }, pluginConfig),
     });
 
@@ -185,6 +198,7 @@ export default definePluginEntry({
       label: 'X Followers List',
       description: 'Fetch followers for the connected X account or a specified user id.',
       parameters: Type.Object({
+        ...accountIdParameter,
         userId: Type.Optional(Type.String()),
         maxResults: Type.Optional(Type.Integer({ minimum: 1, maximum: 1000 })),
         paginationToken: Type.Optional(Type.String()),
@@ -195,10 +209,40 @@ export default definePluginEntry({
     });
 
     registerTool({
+      name: 'x_posts_search',
+      label: 'X Posts Search',
+      description: 'Search recent X posts using the authenticated account context. This uses X recent-search semantics and is not a full archive search.',
+      parameters: Type.Object({
+        ...accountIdParameter,
+        query: Type.String(),
+        maxResults: Type.Optional(Type.Integer({ minimum: 5, maximum: 100 })),
+        paginationToken: Type.Optional(Type.String()),
+      }, { additionalProperties: false }),
+      execute: (params) => executeAction('x.posts.search', { ...params }, pluginConfig),
+    });
+
+    registerTool({
+      name: 'x_user_posts_search',
+      label: 'X User Posts Search',
+      description: 'Search a user/account timeline by paginating that user timeline and filtering locally. Use this for older own-post lookups and account-scoped archive-style searches.',
+      parameters: Type.Object({
+        ...accountIdParameter,
+        query: Type.String(),
+        userId: Type.Optional(Type.String()),
+        maxResults: Type.Optional(Type.Integer({ minimum: 5, maximum: 100 })),
+        maxPages: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+        limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+        paginationToken: Type.Optional(Type.String()),
+      }, { additionalProperties: false }),
+      execute: (params) => executeAction('x.user_posts.search', { ...params }, pluginConfig),
+    });
+
+    registerTool({
       name: 'x_post_create',
       label: 'X Post Create Draft',
       description: 'Create a durable draft for a new X post.',
       parameters: Type.Object({
+        ...accountIdParameter,
         text: Type.String(),
         mediaIds: Type.Optional(Type.Array(Type.String())),
       }, { additionalProperties: false }),
@@ -210,6 +254,7 @@ export default definePluginEntry({
       label: 'X Post Reply Draft',
       description: 'Create a durable draft reply to an X post.',
       parameters: Type.Object({
+        ...accountIdParameter,
         text: Type.String(),
         mediaIds: Type.Optional(Type.Array(Type.String())),
         replyToPostId: Type.Optional(Type.String()),
@@ -223,6 +268,7 @@ export default definePluginEntry({
       label: 'X Post Quote Draft',
       description: 'Create a durable draft quote-post for an X post.',
       parameters: Type.Object({
+        ...accountIdParameter,
         text: Type.String(),
         mediaIds: Type.Optional(Type.Array(Type.String())),
         quotePostId: Type.Optional(Type.String()),
@@ -236,6 +282,7 @@ export default definePluginEntry({
       label: 'X Post Thread Draft',
       description: 'Create a durable draft thread for X.',
       parameters: Type.Object({
+        ...accountIdParameter,
         posts: Type.Array(Type.Object({
           text: Type.String(),
           mediaIds: Type.Optional(Type.Array(Type.String())),
@@ -249,6 +296,7 @@ export default definePluginEntry({
       label: 'X Post Approve Draft',
       description: 'Record explicit approval for an existing X draft.',
       parameters: Type.Object({
+        ...accountIdParameter,
         draftId: Type.String(),
         approvedBy: Type.Optional(Type.String()),
         note: Type.Optional(Type.String()),
@@ -261,6 +309,7 @@ export default definePluginEntry({
       label: 'X Post Publish Approved Draft',
       description: 'Publish an approved X draft.',
       parameters: Type.Object({
+        ...accountIdParameter,
         draftId: Type.String(),
       }, { additionalProperties: false }),
       execute: (params) => executeAction('x.post.publish', { ...params }, pluginConfig),
@@ -271,6 +320,7 @@ export default definePluginEntry({
       label: 'X Media Upload Validate',
       description: 'Validate media for a future X upload flow.',
       parameters: Type.Object({
+        ...accountIdParameter,
         path: Type.String(),
         mimeType: Type.Optional(Type.String()),
         altText: Type.Optional(Type.String()),
@@ -281,16 +331,24 @@ export default definePluginEntry({
     registerTool({
       name: 'x_timeline_mentions',
       label: 'X Timeline Mentions',
-      description: 'Fetch mention timeline context for X (currently scaffold/stub).',
-      parameters: Type.Object({}, { additionalProperties: false }),
+      description: 'Fetch mention timeline context for X.',
+      parameters: Type.Object({
+        ...accountIdParameter,
+        maxResults: Type.Optional(Type.Integer({ minimum: 5, maximum: 100 })),
+        paginationToken: Type.Optional(Type.String()),
+      }, { additionalProperties: false }),
       execute: (params) => executeAction('x.timeline.mentions', { ...params }, pluginConfig),
     });
 
     registerTool({
       name: 'x_timeline_me',
       label: 'X Timeline Me',
-      description: 'Fetch own timeline/account context for X (currently scaffold/stub).',
-      parameters: Type.Object({}, { additionalProperties: false }),
+      description: 'Fetch own timeline/account context for X.',
+      parameters: Type.Object({
+        ...accountIdParameter,
+        maxResults: Type.Optional(Type.Integer({ minimum: 5, maximum: 100 })),
+        paginationToken: Type.Optional(Type.String()),
+      }, { additionalProperties: false }),
       execute: (params) => executeAction('x.timeline.me', { ...params }, pluginConfig),
     });
 
@@ -299,6 +357,7 @@ export default definePluginEntry({
       label: 'X Post Get',
       description: 'Fetch a specific X post by id or URL.',
       parameters: Type.Object({
+        ...accountIdParameter,
         postId: Type.Optional(Type.String()),
         url: Type.Optional(Type.String()),
       }, { additionalProperties: false }),
@@ -310,6 +369,7 @@ export default definePluginEntry({
       label: 'X Post Context',
       description: 'Fetch a post plus its immediate referenced context by id or URL.',
       parameters: Type.Object({
+        ...accountIdParameter,
         postId: Type.Optional(Type.String()),
         url: Type.Optional(Type.String()),
       }, { additionalProperties: false }),
@@ -321,6 +381,7 @@ export default definePluginEntry({
       label: 'X Engagement Like',
       description: 'Plan an X like/unlike action (currently scaffold-only).',
       parameters: Type.Object({
+        ...accountIdParameter,
         postId: Type.String(),
         undo: Type.Optional(Type.Boolean()),
       }, { additionalProperties: false }),
@@ -332,6 +393,7 @@ export default definePluginEntry({
       label: 'X Engagement Repost',
       description: 'Plan an X repost/unrepost action (currently scaffold-only).',
       parameters: Type.Object({
+        ...accountIdParameter,
         postId: Type.String(),
         undo: Type.Optional(Type.Boolean()),
       }, { additionalProperties: false }),
@@ -343,6 +405,7 @@ export default definePluginEntry({
       label: 'X Engagement Bookmark',
       description: 'Plan an X bookmark/unbookmark action (currently scaffold-only).',
       parameters: Type.Object({
+        ...accountIdParameter,
         postId: Type.String(),
         undo: Type.Optional(Type.Boolean()),
       }, { additionalProperties: false }),

@@ -12,25 +12,40 @@ const DEFAULT_DRAFTS_FILE_PATH = path.resolve(process.cwd(), '.openclaw-x-drafts
 const DEFAULT_SESSION_FILE_PATH = path.resolve(process.cwd(), '.openclaw-x-session.json');
 const DEFAULT_SCOPES = ['tweet.read', 'tweet.write', 'users.read', 'follows.read', 'offline.access', 'media.write'];
 
-export function loadAccountConfig(overrides: Partial<AccountConfig> = {}): AccountConfig {
+function resolveAccountOverrides(overrides: Partial<AccountConfig>, accountId: string): Partial<AccountConfig> {
+  const accountOverrides = overrides.accounts?.[accountId];
+  if (!accountOverrides) {
+    return overrides;
+  }
+
+  return {
+    ...overrides,
+    ...accountOverrides,
+    accounts: overrides.accounts,
+  };
+}
+
+export function loadAccountConfig(overrides: Partial<AccountConfig> = {}, accountId = 'default'): AccountConfig {
+  const effectiveOverrides = resolveAccountOverrides(overrides, accountId);
   const config: AccountConfig = {
-    apiBaseUrl: overrides.apiBaseUrl?.trim() || DEFAULT_X_API_BASE_URL,
-    uploadApiBaseUrl: overrides.uploadApiBaseUrl?.trim() || DEFAULT_X_UPLOAD_API_BASE_URL,
-    oauthAuthorizeUrl: overrides.oauthAuthorizeUrl?.trim() || DEFAULT_X_OAUTH_AUTHORIZE_URL,
-    oauthTokenUrl: overrides.oauthTokenUrl?.trim() || DEFAULT_X_OAUTH_TOKEN_URL,
-    scopes: overrides.scopes?.length ? overrides.scopes : DEFAULT_SCOPES,
+    apiBaseUrl: effectiveOverrides.apiBaseUrl?.trim() || DEFAULT_X_API_BASE_URL,
+    uploadApiBaseUrl: effectiveOverrides.uploadApiBaseUrl?.trim() || DEFAULT_X_UPLOAD_API_BASE_URL,
+    oauthAuthorizeUrl: effectiveOverrides.oauthAuthorizeUrl?.trim() || DEFAULT_X_OAUTH_AUTHORIZE_URL,
+    oauthTokenUrl: effectiveOverrides.oauthTokenUrl?.trim() || DEFAULT_X_OAUTH_TOKEN_URL,
+    scopes: effectiveOverrides.scopes?.length ? effectiveOverrides.scopes : DEFAULT_SCOPES,
     approvalMode: 'always',
-    draftsFilePath: overrides.draftsFilePath?.trim() || DEFAULT_DRAFTS_FILE_PATH,
-    sessionFilePath: overrides.sessionFilePath?.trim() || DEFAULT_SESSION_FILE_PATH,
+    draftsFilePath: effectiveOverrides.draftsFilePath?.trim() || DEFAULT_DRAFTS_FILE_PATH,
+    sessionFilePath: effectiveOverrides.sessionFilePath?.trim() || DEFAULT_SESSION_FILE_PATH,
   };
 
-  if (overrides.clientId?.trim()) config.clientId = overrides.clientId.trim();
-  { const value = getClientCredential(overrides)?.trim(); if (value) setClientCredential(config, value); }
-  if (overrides.redirectUri?.trim()) config.redirectUri = overrides.redirectUri.trim();
-  { const value = getBearerCredential(overrides)?.trim(); if (value) setBearerCredential(config, value); }
-  { const value = getUserCredential(overrides)?.trim(); if (value) setUserCredential(config, value); }
-  { const value = getRefreshCredential(overrides)?.trim(); if (value) setRefreshCredential(config, value); }
-  if (overrides.userId?.trim()) config.userId = overrides.userId.trim();
+  if (effectiveOverrides.clientId?.trim()) config.clientId = effectiveOverrides.clientId.trim();
+  { const value = getClientCredential(effectiveOverrides)?.trim(); if (value) setClientCredential(config, value); }
+  if (effectiveOverrides.redirectUri?.trim()) config.redirectUri = effectiveOverrides.redirectUri.trim();
+  { const value = getBearerCredential(effectiveOverrides)?.trim(); if (value) setBearerCredential(config, value); }
+  { const value = getUserCredential(effectiveOverrides)?.trim(); if (value) setUserCredential(config, value); }
+  { const value = getRefreshCredential(effectiveOverrides)?.trim(); if (value) setRefreshCredential(config, value); }
+  if (effectiveOverrides.userId?.trim()) config.userId = effectiveOverrides.userId.trim();
+  if (overrides.accounts) config.accounts = overrides.accounts;
 
   return config;
 }

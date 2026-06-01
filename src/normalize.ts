@@ -90,7 +90,9 @@ export function normalizeTimelineResponse(response: { data?: AnyRecord[]; includ
   const includes = { usersById, tweetsById };
 
   const posts = Array.isArray(response.data)
-    ? response.data.map((post) => normalizePost(post, includes)).filter(Boolean)
+    ? response.data
+        .map((post) => normalizePost(post, includes))
+        .filter((post): post is NonNullable<typeof post> => Boolean(post))
     : [];
 
   return {
