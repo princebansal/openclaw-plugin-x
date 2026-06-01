@@ -224,11 +224,11 @@ npm pack --dry-run
 Recommended public release flow:
 
 ```bash
-clawhub package publish <source> --dry-run
-clawhub package publish <source>
+clawhub package pack <source> --pack-destination /tmp/openclaw-plugin-x-pack --json
+clawhub package publish /tmp/openclaw-plugin-x-pack/openclaw-plugin-x-<version>.tgz --tags latest
 ```
 
-Where `<source>` can be a local folder, `owner/repo`, `owner/repo@ref`, or a GitHub URL.
+Publishing the ClawPack `.tgz` keeps the ClawHub artifact on the modern npm-pack path instead of the legacy ZIP fallback.
 
 For consumers:
 

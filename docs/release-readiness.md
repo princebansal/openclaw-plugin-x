@@ -6,7 +6,7 @@ This is a practical release-readiness assessment for `openclaw-plugin-x`, based 
 
 ### Ready now
 - GitHub repo exists and is pushed
-- ClawHub package publish works
+- ClawHub ClawPack package publish works
 - `package.json` contains OpenClaw metadata
 - `openclaw.plugin.json` exists
 - entrypoint uses `definePluginEntry`
@@ -47,6 +47,7 @@ This is a practical release-readiness assessment for `openclaw-plugin-x`, based 
 ### Validation
 - [x] `npm run check`
 - [x] build artifacts exist
+- [x] ClawPack artifact publish validation
 - [ ] packed-artifact install/load validation
 - [ ] real post-install tool smoke test in install context
 
@@ -58,7 +59,7 @@ This is a practical release-readiness assessment for `openclaw-plugin-x`, based 
 
 ### Publish path reality
 - Docs say external plugins can be published through ClawHub or npm.
-- Current local `clawhub` supports `clawhub package publish`.
+- Current local `clawhub` supports `clawhub package pack` and ClawPack tarball publish.
 - The plugin is published on ClawHub as `openclaw-plugin-x`; npm remains optional.
 
 ## Recommendation
@@ -71,5 +72,5 @@ Minimum bar before each future plugin release:
 2. run `npm run build`
 3. run `npm pack --dry-run`
 4. verify manifest versions align
-5. publish to GitHub and ClawHub from the same source commit
+5. publish to GitHub and ClawHub from the same source commit, using the ClawPack `.tgz` path
 6. inspect ClawHub package metadata and monitor scan status
