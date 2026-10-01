@@ -2,8 +2,7 @@
   "id": "openclaw-plugin-x",
   "name": "OpenClaw X Plugin",
   "description": "OpenClaw plugin for X/Twitter with OAuth account connection, authenticated reads (including followers), durable drafts, approval-gated publish, and local session/draft persistence.",
-  "version": "0.2.12",
-  "entry": "dist/plugin-entry.js",
+  "version": "0.2.13",
   "setup": {
     "summary": "Requires your own X developer app credentials. Stores OAuth session state and drafts on the local machine.",
     "steps": [
@@ -224,15 +223,5 @@
         }
       }
     }
-  },
-  "providerAuthEnvVars": {
-    "x": [
-      "X_CLIENT_ID",
-      "X_CLIENT_SECRET",
-      "X_REDIRECT_URI",
-      "X_BEARER_TOKEN",
-      "X_ACCESS_TOKEN",
-      "X_REFRESH_TOKEN"
-    ]
   }
 }

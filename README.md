@@ -2,6 +2,19 @@
 
 Draft-first X/Twitter management plugin for OpenClaw.
 
+ClawHub: [OpenClaw X Plugin](https://clawhub.ai/princebansal/plugins/openclaw-plugin-x)
+
+Companion workflow: [X Management skill](https://clawhub.ai/princebansal/skills/x-management)
+
+Source: [GitHub repository](https://github.com/princebansal/openclaw-plugin-x)
+
+## Release notes
+
+### 0.2.13
+- Refresh ClawHub package metadata: remove obsolete manifest fields while retaining provider environment declarations in `setup.providers`.
+- Add direct links to the ClawHub plugin and companion skill listings.
+- No runtime behavior changes.
+
 This package has been proven locally for the core draft-first workflow:
 - OAuth PKCE connect flow with manual code/redirect completion
 - authenticated reads
@@ -224,11 +237,11 @@ npm pack --dry-run
 Recommended public release flow:
 
 ```bash
-clawhub package pack <source> --pack-destination /tmp/openclaw-plugin-x-pack --json
-clawhub package publish /tmp/openclaw-plugin-x-pack/openclaw-plugin-x-<version>.tgz --tags latest
+clawhub package validate . --openclaw-version <target-openclaw-version>
+clawhub package publish . --version <version> --changelog "<release summary>" --tags latest
 ```
 
-Publishing the ClawPack `.tgz` keeps the ClawHub artifact on the modern npm-pack path instead of the legacy ZIP fallback.
+`clawhub package publish` accepts the validated package folder (or a GitHub source); keep the ClawHub CLI current and follow its current help output when preparing a release.
 
 For consumers:
 
