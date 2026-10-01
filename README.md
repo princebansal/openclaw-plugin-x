@@ -10,6 +10,9 @@ Source: [GitHub repository](https://github.com/princebansal/openclaw-plugin-x)
 
 ## Release notes
 
+### 0.2.15
+- Rebuild the published `dist/` artifact so the packaged tool description accurately identifies the live X media upload side effect.
+
 ### 0.2.14
 - Correct the `x_media_upload` tool label and description: invoking it uploads the specified local file to X; it is not a validation-only action.
 - Clarify that media uploads are immediate external actions while post publishing remains approval-gated.
@@ -242,6 +245,7 @@ npm pack --dry-run
 Recommended public release flow:
 
 ```bash
+npm run build
 clawhub package validate . --openclaw-version <target-openclaw-version>
 clawhub package publish . --version <version> --changelog "<release summary>" --tags latest
 ```
