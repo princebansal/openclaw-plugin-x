@@ -317,8 +317,8 @@ export default definePluginEntry({
 
     registerTool({
       name: 'x_media_upload',
-      label: 'X Media Upload Validate',
-      description: 'Validate media for a future X upload flow.',
+      label: 'X Media Upload',
+      description: 'Upload the specified local media file to X and return its media ID for use in a post.',
       parameters: Type.Object({
         ...accountIdParameter,
         path: Type.String(),

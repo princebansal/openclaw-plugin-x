@@ -10,6 +10,10 @@ Source: [GitHub repository](https://github.com/princebansal/openclaw-plugin-x)
 
 ## Release notes
 
+### 0.2.14
+- Correct the `x_media_upload` tool label and description: invoking it uploads the specified local file to X; it is not a validation-only action.
+- Clarify that media uploads are immediate external actions while post publishing remains approval-gated.
+
 ### 0.2.13
 - Refresh ClawHub package metadata: remove obsolete manifest fields while retaining provider environment declarations in `setup.providers`.
 - Add direct links to the ClawHub plugin and companion skill listings.
@@ -64,6 +68,7 @@ This plugin is intentionally draft-first:
 - create/reply/quote/thread actions create stored drafts
 - `x_post_approve` records explicit approval
 - `x_post_publish` only performs a live write for an already-approved draft with valid user credentials
+- `x_media_upload` immediately sends the specified local file to X; it does not create a media-upload draft
 
 Approval remains mandatory by design.
 
