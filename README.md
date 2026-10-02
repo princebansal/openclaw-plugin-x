@@ -10,6 +10,11 @@ Source: [GitHub repository](https://github.com/princebansal/openclaw-plugin-x)
 
 ## Release notes
 
+### 0.2.16
+- Refresh the declared build and plugin SDK target to OpenClaw 2026.9.7.
+- Keep the existing minimum Gateway/API compatibility at 2026.5.28; this release is built and checked against the latest stable release, without needlessly dropping older compatible hosts.
+- Clarify the compatibility check and release-validation boundary.
+
 ### 0.2.15
 - Rebuild the published `dist/` artifact so the packaged tool description accurately identifies the live X media upload side effect.
 
@@ -76,9 +81,13 @@ This plugin is intentionally draft-first:
 Approval remains mandatory by design.
 
 ## Requirements
-- Node.js 22+
+- OpenClaw 2026.9.7 host runtime: Node.js 24.16.0+ on Node 24, or 26.1.0+.
+- The plugin package itself declares Node.js 22+ in `engines`; the host's runtime requirement takes precedence when running inside OpenClaw.
 - OpenClaw version compatible with the package metadata in `package.json`
 - Your own X developer app credentials for OAuth-based account access
+
+### OpenClaw compatibility
+This source release targets OpenClaw 2026.9.7 and declares that build/API baseline in `package.json`. Its minimum compatible Gateway/plugin API remains 2026.5.28. This is a compatibility declaration, not proof of every runtime path: run the package validator and a clean packed-install/load check against the target OpenClaw release before publishing. OpenClaw's plugin APIs are experimental, so re-check them when adopting a newer host release.
 
 Important: this plugin is generic, but OAuth is not shared. Each user installing the plugin should configure their own X developer app credentials. The auth URL is generated from the credentials configured in that user's OpenClaw runtime, not from a generic shared app.
 
@@ -92,7 +101,7 @@ Registry trust note:
 
 ### Option A: local/path install during development
 ```bash
-cd projects/openclaw-plugin-x
+cd openclaw-plugin-x
 npm install
 npm run check
 npm run build
