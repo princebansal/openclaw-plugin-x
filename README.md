@@ -10,6 +10,10 @@ Source: [GitHub repository](https://github.com/princebansal/openclaw-plugin-x)
 
 ## Release notes
 
+### 0.2.17
+- Add an OpenClaw Gateway OAuth callback route with PKCE state validation, account-bound matching, a ten-minute expiry, and one-time callback claiming; keep manual completion as a fallback.
+- Declare the callback route through the supported `registerHttpRoute` API and align OAuth endpoint/scope config metadata with the runtime schema.
+
 ### 0.2.16
 - Refresh the declared build and plugin SDK target to OpenClaw 2026.9.7.
 - Keep the existing minimum Gateway/API compatibility at 2026.5.28; this release is built and checked against the latest stable release, without needlessly dropping older compatible hosts.
@@ -28,7 +32,7 @@ Source: [GitHub repository](https://github.com/princebansal/openclaw-plugin-x)
 - No runtime behavior changes.
 
 This package has been proven locally for the core draft-first workflow:
-- OAuth PKCE connect flow with manual code/redirect completion
+- OAuth PKCE connect flow with automatic Gateway callback and manual code/redirect fallback
 - authenticated reads
 - follower-list reads
 - account-scoped recent search and user timeline search
@@ -38,12 +42,12 @@ This package has been proven locally for the core draft-first workflow:
 - media upload and media-backed publish
 - multi-account OAuth sessions with account-bound drafts and publish checks
 
-It is **real**, but it is **not fully productized** yet. The main remaining gaps are automatic OAuth callback handling and continued packaged-runtime validation after each release.
+It is **real**, but it is **not fully productized** yet. The main remaining gaps are live engagement actions and continued packaged-runtime validation after each release.
 
 ## Current status
 
 ### Proven working locally
-- OAuth auth URL generation and manual completion
+- OAuth auth URL generation, PKCE callback handling, and manual completion fallback
 - session persistence and token refresh handling
 - `x_account_me`
 - `x_followers_list`
@@ -65,7 +69,6 @@ It is **real**, but it is **not fully productized** yet. The main remaining gaps
 - X/Twitter post URL resolution
 
 ### Not done yet
-- automatic OAuth callback HTTP handling inside OpenClaw
 - live engagement actions for like / repost / bookmark
 - deeper conversation expansion beyond immediate referenced posts
 - broader public-release validation beyond local/manual QA
@@ -124,8 +127,10 @@ Before public publication, do one more install/load validation from the packed a
 2. Build the plugin.
 3. Configure/load it in OpenClaw.
 4. Run `x_account_connect` to inspect readiness.
-5. Start OAuth with `x_account_auth_url`.
-6. Complete OAuth with `x_account_complete` using either the auth code or the full redirect URL.
+5. Start OAuth with `x_account_auth_url` and approve the app in your browser.
+6. When the registered redirect URI reaches this Gateway's callback route, the plugin completes OAuth automatically. If the Gateway cannot be reached from the browser, use `x_account_complete` with the returned code or full redirect URL.
+
+For automatic completion, register an externally reachable Gateway URL ending in `/openclaw-plugin-x/oauth/callback` as the X app callback URL, then set the exact same URL as `redirectUri`. The callback accepts GET requests, requires the unexpired PKCE state created for that exact account, claims it once, and returns a static page without echoing OAuth parameters. The callback route is public (`auth: "plugin"`) by design because the X redirect cannot carry Gateway credentials; the unguessable, short-lived OAuth state is the admission check.
 
 ### Example env bring-up
 ```bash
@@ -182,7 +187,7 @@ You can configure per-account overrides under `accounts` while keeping shared de
 {
   "clientId": "shared-client-id",
   "clientSecret": "shared-client-secret",
-  "redirectUri": "http://127.0.0.1:8787/x/callback",
+  "redirectUri": "https://gateway.example.com/openclaw-plugin-x/oauth/callback",
   "sessionFilePath": "~/.openclaw/state/openclaw-plugin-x/session.json",
   "draftsFilePath": "~/.openclaw/state/openclaw-plugin-x/drafts.json",
   "accounts": {
@@ -271,13 +276,13 @@ This plugin is designed to pair with an agent-side skill such as `x-management` 
 
 ## Known limitations
 - plugin drafts are local plugin drafts, not X-native drafts shown in X apps
-- OAuth completion is currently manual; automatic callback handling is not implemented
+- OAuth automatic completion requires the exact callback URI to be registered with X and reachable by the authorizing browser
 - engagement actions are plan-only today
 - only approved drafts can be published live today
 - API publish eligibility is still constrained by X platform policy and account permissions, not just plugin approval state
 - API replies may be rejected for accounts that have not mentioned or otherwise engaged with you; in live testing this surfaced as X API `403 Forbidden` with: `Reply to this conversation is not allowed because you have not been mentioned or otherwise engaged by the author of the post you are replying to.`
 - for outreach/distribution, quote posts or manual in-app replies may work when API replies are blocked
-- public install/load validation still needs one clean pass from the distributable artifact
+- repeat packed-artifact load validation after future releases
 - follower-list reads require the OAuth session to include `follows.read`; older sessions created before that scope was added must reconnect
 
 ## Release notes for maintainers

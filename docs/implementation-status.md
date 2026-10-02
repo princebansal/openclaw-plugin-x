@@ -1,13 +1,13 @@
 # Implementation Status
 
-Last updated: 2026-06-01
+Last updated: 2026-10-02
 
 ## Proven working
 - `npm run check` passes.
 - `npm run build` passes.
 - Native OpenClaw plugin entrypoint exists in `src/plugin-entry.ts`.
 - Durable local session persistence exists for OAuth state/tokens.
-- OAuth auth URL generation, manual completion, and refresh handling are implemented.
+- OAuth auth URL generation, automatic Gateway callback completion, manual fallback completion, and refresh handling are implemented.
 - Read tools are working for:
   - `x.account.me`
   - `x.followers.list` (with `follows.read` in the connected OAuth scope set)
@@ -33,7 +33,6 @@ Last updated: 2026-06-01
 - Manifest/package metadata are aligned with the current router surface.
 
 ## Partially complete / still rough
-- Automatic OAuth callback HTTP handling is still not implemented.
 - Engagement actions return plans only; they do not call X.
 - Deeper multi-hop thread/context expansion is still limited.
 - Packaged/public runtime validation should continue after each release even though ClawHub package validation now succeeds.
@@ -48,4 +47,4 @@ The following older caveats are now outdated:
 
 ## Current honest line
 This plugin is functionally real for the core X management loop, including explicit multi-account operation, follower-list reads, search, media upload, and approval-gated publishing.
-The main remaining focus areas are automatic OAuth callback handling and ongoing packaged-runtime validation.
+The main remaining focus areas are live engagement actions and ongoing packaged-runtime validation.

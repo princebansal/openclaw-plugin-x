@@ -43,7 +43,7 @@ Then test with one of:
 ### 3. After install works
 Proceed to:
 - plugin-config-to-runtime wiring validation
-- automatic OAuth callback flow
+- automatic OAuth callback flow (implemented through the Gateway `registerHttpRoute` API)
 - further publish/read hardening
 
 ## Recommended immediate implementation order

@@ -1,7 +1,10 @@
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Type } from '@sinclair/typebox';
 import { z } from 'zod';
 
 import { routeToolRequest } from './router.js';
+import { handleOAuthCallbackRequest } from './oauth-callback.js';
+import { OAUTH_CALLBACK_PATH } from './auth.js';
 import type { AccountConfig } from './types.js';
 
 const CLIENT_SECRET_CONFIG_FIELD = `client${'Secret'}`;
@@ -41,7 +44,13 @@ type PluginEntryDefinition = {
       description: string;
       parameters: object;
       execute: (toolCallId: string, params: Record<string, unknown>) => Promise<{ content: { type: 'text'; text: string }[]; details: unknown }>;
-    }, metadata?: { name?: string }) => void;
+      }, metadata?: { name?: string }) => void;
+    registerHttpRoute?: (route: {
+      path: string;
+      auth: 'plugin';
+      match: 'exact';
+      handler: (request: IncomingMessage, response: ServerResponse) => Promise<boolean | void> | boolean | void;
+    }) => void;
   }) => void;
 };
 
@@ -137,6 +146,13 @@ export default definePluginEntry({
   configSchema: pluginConfigSchema,
   register(api) {
     const pluginConfig = ((api.pluginConfig ?? {}) as Partial<AccountConfig>);
+
+    api.registerHttpRoute?.({
+      path: OAUTH_CALLBACK_PATH,
+      auth: 'plugin',
+      match: 'exact',
+      handler: (request, response) => handleOAuthCallbackRequest(request, response, pluginConfig),
+    });
 
     const registerTool = (tool: {
       name: string;

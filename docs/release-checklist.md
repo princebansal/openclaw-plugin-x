@@ -57,7 +57,7 @@ Use this before any public npm/plugin-manifest/ClawHub-style release.
 - [ ] media-backed single-post publish succeeds
 
 ## 8. Honesty check before release
-- [ ] README does not imply automatic OAuth callback support
+- [ ] README documents the OAuth callback's state, account-binding, expiry, and public-route security behavior
 - [ ] README does not imply live engagement actions exist
 - [ ] README describes thread publish honestly and does not overstate its validation level
 - [ ] README describes multi-account `accountId` behavior and account-bound drafts honestly

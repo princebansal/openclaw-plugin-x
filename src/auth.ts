@@ -2,8 +2,10 @@ import crypto from 'node:crypto';
 import type { AccountConfig, OAuthTokenResponse, PendingOAuthState, SessionState } from './types.js';
 import { XPluginError } from './errors.js';
 import { getBearerCredential, getClientCredential, getRefreshCredential, getUserCredential, setRefreshCredential, setUserCredential } from './sensitive-fields.js';
-export { getSession, setSession, InMemorySessionStore } from './session-store.js';
+export { clearPendingOAuth, getSession, setSession, InMemorySessionStore } from './session-store.js';
 export type { SessionStore } from './session-store.js';
+
+export const OAUTH_CALLBACK_PATH = '/openclaw-plugin-x/oauth/callback';
 
 type OAuthDebugContext = {
   accountId?: string;
@@ -30,17 +32,17 @@ export function buildConnectPlan(config: AccountConfig) {
       token: config.oauthTokenUrl,
     },
     note:
-      'Current bring-up supports durable PKCE auth planning and manual code exchange scaffolding, but callback HTTP handling is not wired yet.',
+      'OAuth uses a durable PKCE session. When redirectUri reaches the Gateway callback route, completion is automatic; manual code/redirect completion remains available as a fallback.',
     nextSteps:
       mode === 'token-config-bringup'
         ? [
             'Use X_BEARER_TOKEN or X_ACCESS_TOKEN for immediate read-path testing.',
             'Use X_ACCESS_TOKEN for live write-path testing.',
-            'Replace env-token bring-up with OAuth 2.0 user flow once callback handling and token persistence are wired.',
+            'Use x_account_auth_url for PKCE OAuth and the Gateway callback route for automatic completion.',
           ]
         : [
             'Provide X_CLIENT_ID / X_REDIRECT_URI for OAuth 2.0 user flow.',
-            'Generate PKCE auth URL and complete code exchange manually or via callback.',
+            'Generate a PKCE auth URL and complete through the Gateway callback or manual code exchange.',
             'Persist access/refresh token session in the plugin session store.',
           ],
   };
@@ -54,6 +56,18 @@ export function createPkcePair(): { codeVerifier: string; codeChallenge: string 
 
 export function createOAuthState(): string {
   return base64Url(crypto.randomBytes(24));
+}
+
+export function oauthStateMatches(expected: string, received: string): boolean {
+  const expectedBytes = Buffer.from(expected, 'utf8');
+  const receivedBytes = Buffer.from(received, 'utf8');
+  return expectedBytes.length === receivedBytes.length && crypto.timingSafeEqual(expectedBytes, receivedBytes);
+}
+
+export function isPendingOAuthFresh(createdAt: string, now = Date.now()): boolean {
+  const createdAtMs = Date.parse(createdAt);
+  const ageMs = now - createdAtMs;
+  return Number.isFinite(createdAtMs) && ageMs >= -60_000 && ageMs <= 10 * 60_000;
 }
 
 export function buildAuthorizationUrl(config: AccountConfig): PendingOAuthState {

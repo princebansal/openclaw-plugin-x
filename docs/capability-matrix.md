@@ -4,7 +4,7 @@
 | --- | --- | --- | --- |
 | Account config bring-up | `x.account.connect` | Implemented | Returns readiness, plan, draft path, session path, and current session state |
 | OAuth auth URL generation | `x.account.auth_url` | Implemented | Generates/stores PKCE pending state |
-| OAuth manual completion | `x.account.complete` | Implemented | Accepts code or redirect URL; callback HTTP route still not wired |
+| OAuth manual completion | `x.account.complete` | Implemented | Accepts code or redirect URL as a fallback when the Gateway callback cannot be reached |
 | Authenticated profile read | `x.account.me` | Implemented | Calls `/2/users/me` with user auth |
 | Multi-account sessions | `accountId` parameter | Implemented, proven | Sessions are keyed by exact `accountId`; verified with `default` and `dontdieeveryday` |
 | Followers list read | `x.followers.list` | Implemented | Calls `/2/users/{id}/followers` with user auth; requires `follows.read` in the connected OAuth scope set |
@@ -26,6 +26,6 @@
 | Like / unlike | `x.engagement.like` | Stubbed | Planning only |
 | Repost / undo repost | `x.engagement.repost` | Stubbed | Planning only |
 | Bookmark / remove bookmark | `x.engagement.bookmark` | Stubbed | Planning only |
-| OAuth callback flow | internal auth | Partial | Manual completion exists; automatic callback handling does not |
+| OAuth callback flow | `GET /openclaw-plugin-x/oauth/callback` | Implemented | Public plugin-auth route; matches one fresh account-bound PKCE state, claims it once, and returns a static response |
 | Thread publish | `x.post.publish` | Implemented, proven | Publishes approved thread drafts by chaining replies |
 | OpenClaw SDK tool registration | plugin entrypoint | Implemented, proven locally | Buildable entrypoint exists, active plugin behavior was validated in-session, and ClawHub package validation succeeded |

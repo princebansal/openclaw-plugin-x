@@ -52,7 +52,7 @@ This is a practical release-readiness assessment for `openclaw-plugin-x`, based 
 - [ ] real post-install tool smoke test in install context
 
 ### Runtime honesty
-- [x] README states missing automatic OAuth callback handling
+- [x] README documents automatic OAuth callback handling and manual fallback
 - [x] README states engagement actions are not live
 - [x] README states thread publish is implemented for approved thread drafts
 - [x] README frames the plugin as real but not fully productized
@@ -65,7 +65,7 @@ This is a practical release-readiness assessment for `openclaw-plugin-x`, based 
 ## Recommendation
 
 ### Plugin
-Treat the GitHub repo and ClawHub package as available now, while keeping release notes honest about manual OAuth callback completion and early packaged-runtime validation.
+Treat the GitHub repo and ClawHub package as available now, while keeping release notes honest about the external reachability requirement for OAuth callback completion and continued post-release runtime checks.
 
 Minimum bar before each future plugin release:
 1. run `npm run check`

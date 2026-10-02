@@ -2,14 +2,14 @@
   "id": "openclaw-plugin-x",
   "name": "OpenClaw X Plugin",
   "description": "OpenClaw plugin for X/Twitter with OAuth account connection, authenticated reads (including followers), durable drafts, approval-gated publish, and local session/draft persistence.",
-  "version": "0.2.16",
+  "version": "0.2.17",
   "setup": {
     "summary": "Requires your own X developer app credentials. Stores OAuth session state and drafts on the local machine.",
     "steps": [
       "Set X clientId and redirectUri, plus clientSecret for OAuth token exchange.",
       "Use stable local state paths for sessionFilePath and draftsFilePath, outside the plugin install directory.",
       "For multiple accounts, pass accountId to tools and optionally configure per-account overrides under accounts.",
-      "Connect the account with x_account_auth_url and x_account_complete before using authenticated reads or publish tools.",
+      "Connect the account with x_account_auth_url; use the Gateway OAuth callback or x_account_complete manual fallback before authenticated reads or publish tools.",
       "Follower-list reads require the OAuth scope follows.read; older sessions must reconnect after upgrading."
     ],
     "providers": [
@@ -133,6 +133,18 @@
       "label": "OAuth Redirect URI",
       "required": true
     },
+    "oauthAuthorizeUrl": {
+      "label": "OAuth Authorization Endpoint",
+      "advanced": true
+    },
+    "oauthTokenUrl": {
+      "label": "OAuth Token Endpoint",
+      "advanced": true
+    },
+    "scopes": {
+      "label": "OAuth Scopes",
+      "advanced": true
+    },
     "bearerToken": {
       "label": "X Bearer Token",
       "sensitive": true,
@@ -172,6 +184,21 @@
       },
       "uploadApiBaseUrl": {
         "type": "string"
+      },
+      "oauthAuthorizeUrl": {
+        "type": "string",
+        "description": "OAuth authorization endpoint. Defaults to the X authorization endpoint."
+      },
+      "oauthTokenUrl": {
+        "type": "string",
+        "description": "OAuth token endpoint. Defaults to the X token endpoint."
+      },
+      "scopes": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "OAuth scopes requested during account connection."
       },
       "clientId": {
         "type": "string",

@@ -57,3 +57,15 @@ export function setSession(filePath: string, next: SessionState): SessionState {
   saveStore(filePath, store);
   return next;
 }
+
+export function clearPendingOAuth(filePath: string, accountId: string): boolean {
+  const store = ensureStore(filePath);
+  const index = store.sessions.findIndex((session) => session.accountId === accountId);
+  if (index === -1 || !store.sessions[index]?.pendingOAuth) return false;
+
+  const session = { ...store.sessions[index] };
+  delete session.pendingOAuth;
+  store.sessions[index] = session;
+  saveStore(filePath, store);
+  return true;
+}

@@ -5,6 +5,9 @@ import {
   exchangeAuthorizationCode,
   finalizeSession,
   getSession,
+  isPendingOAuthFresh,
+  oauthStateMatches,
+  OAUTH_CALLBACK_PATH,
   refreshAccessToken,
   setSession,
 } from './auth.js';
@@ -49,6 +52,9 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
       }
       case 'x.account.auth_url': {
         assertOAuthConfigPresent(config);
+        const automaticCallbackConfigured = config.redirectUri
+          ? new URL(config.redirectUri).pathname === OAUTH_CALLBACK_PATH
+          : false;
         const pending = buildAuthorizationUrl(config);
         const existing = session ?? { accountId, scopes: [] };
         const stored = setSession(config.sessionFilePath, {
@@ -63,10 +69,13 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           redirectUri: pending.redirectUri,
           scopes: pending.scopes,
           session: redactSession(stored),
-        }, true, ['Open this URL, approve the app, then complete the flow with the returned code or full redirect URL.']);
+        }, true, [automaticCallbackConfigured
+          ? 'Open this URL and approve the app; the configured OpenClaw callback route will complete the connection automatically. If the Gateway callback is unreachable, use x_account_complete with the returned code or full redirect URL.'
+          : 'Open this URL and approve the app, then use x_account_complete with the returned code or full redirect URL. For automatic completion, configure redirectUri to the OpenClaw callback path.']);
       }
       case 'x.account.complete': {
-        const input = request.input as { code?: string; redirectUrl?: string; state?: string };
+        const input = request.input as { code?: string; redirectUrl?: string; state?: string; _oauthCallback?: boolean };
+        const isOAuthCallback = input._oauthCallback === true;
         const pending = session?.pendingOAuth;
         if (!pending) {
           throw new XPluginError('AUTH_REQUIRED', 'No pending OAuth session found. Generate an auth URL first.');
@@ -74,11 +83,22 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
 
         const parsed = parseOAuthCompletionInput(input);
         const stateProvided = Boolean(parsed.state);
-        const stateMatched = parsed.state ? parsed.state === pending.state : undefined;
-        if (parsed.state && parsed.state !== pending.state) {
+        const stateMatched = parsed.state ? oauthStateMatches(pending.state, parsed.state) : undefined;
+        if (isOAuthCallback && !parsed.state) {
+          throw new XPluginError('AUTH_REQUIRED', 'OAuth callback is missing state.');
+        }
+        if (parsed.state && !stateMatched) {
           throw new XPluginError('AUTH_REQUIRED', 'OAuth state mismatch.', {
-            details: { expected: pending.state, received: parsed.state },
           });
+        }
+        if (isOAuthCallback && !isPendingOAuthFresh(pending.createdAt)) {
+          throw new XPluginError('AUTH_REQUIRED', 'OAuth callback expired. Start a new connection flow.');
+        }
+
+        // Claim callback state synchronously before the first network await so a
+        // replay or concurrent callback cannot exchange the same authorization code.
+        if (isOAuthCallback && session) {
+          setSession(config.sessionFilePath, { ...session, pendingOAuth: undefined });
         }
 
         const token = await exchangeAuthorizationCode({
@@ -116,7 +136,7 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           connected: true,
           session: redactSession(stored),
           me,
-        }, false, ['OAuth exchange completed. Callback HTTP route is still not wired; this used manual code completion.']);
+        }, false, isOAuthCallback ? ['OAuth callback completed automatically.'] : ['OAuth exchange completed with manual code completion.']);
       }
       case 'x.account.me': {
         const effectiveSession = await ensureFreshSession(config, session);
