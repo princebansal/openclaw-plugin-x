@@ -7,11 +7,15 @@ import { routeToolRequest } from './router.js';
 import type { AccountConfig, ToolResponse } from './types.js';
 
 type OAuthPluginConfig = Partial<AccountConfig>;
+type OAuthCallbackOptions = {
+  notifyOrigin?: (sessionKey: string, message: string, idempotencyKey: string) => Promise<'announced' | 'queued' | 'unavailable'>;
+};
 
 export async function handleOAuthCallbackRequest(
   request: IncomingMessage,
   response: ServerResponse,
   pluginConfig: OAuthPluginConfig,
+  options: OAuthCallbackOptions = {},
 ): Promise<boolean> {
   setSecureResponseHeaders(response);
 
@@ -41,19 +45,28 @@ export async function handleOAuthCallbackRequest(
     return respond(response, 400, 'Invalid OAuth callback. Start a new connection flow in OpenClaw.');
   }
 
-  const accountId = findPendingAccount(pluginConfig, state.value);
-  if (!accountId) {
+  const pendingMatch = findPendingAccount(pluginConfig, state.value);
+  if (!pendingMatch) {
     return respond(response, 400, 'This OAuth callback is invalid or expired. Start a new connection flow in OpenClaw.');
   }
 
+  const { accountId, pending } = pendingMatch;
   const config = loadAccountConfig(pluginConfig, accountId);
   if (providerError.value) {
     clearPendingOAuth(config.sessionFilePath, accountId);
-    return respond(response, 200, 'X authorization was declined. Return to OpenClaw to start again.');
+    const notice = 'X authorization was declined; no connection was made. You can start a new authorization in this conversation.';
+    const delivery = await notifyOrigin(options, pending.originSessionKey, notice, state.value);
+    return respond(response, 200, delivery === 'announced'
+      ? 'X authorization was declined. OpenClaw has reported this in the conversation that started it.'
+      : 'X authorization was declined. Return to OpenClaw to start again.');
   }
 
   if (!code.value) {
     return respond(response, 400, 'Invalid OAuth callback. Start a new connection flow in OpenClaw.');
+  }
+
+  if ((pending.mode ?? 'callback') === 'paste_back') {
+    return respond(response, 200, 'Authorization was approved. Return to the OpenClaw conversation that started it and paste this full redirect URL or its code into x_account_complete to finish connecting.');
   }
 
   let result: ToolResponse;
@@ -64,19 +77,31 @@ export async function handleOAuthCallbackRequest(
       pluginConfig,
     });
   } catch {
+    await notifyOrigin(options, pending.originSessionKey,
+      'X authorization reached OpenClaw, but token exchange failed. Nothing was confirmed as connected; start a new authorization and try again.', state.value);
     return respond(response, 502, 'X could not complete the connection. Start a new flow in OpenClaw.');
   }
 
   if (!result.ok) {
+    await notifyOrigin(options, pending.originSessionKey,
+      'X authorization reached OpenClaw, but token exchange failed. Nothing was confirmed as connected; start a new authorization and try again.', state.value);
     return respond(response, 502, 'X could not complete the connection. Start a new flow in OpenClaw.');
   }
 
-  return respond(response, 200, 'X account connected. You can close this page and return to OpenClaw.');
+  const notice = 'X account authorization completed successfully. The connection is ready. No posts or media were sent.';
+  const delivery = await notifyOrigin(options, pending.originSessionKey, notice, state.value);
+  return respond(response, 200, delivery === 'announced'
+    ? 'X account connected. OpenClaw has reported the result in the conversation that started authorization.'
+    : delivery === 'queued'
+      ? 'X account connected. OpenClaw saved the result for the next turn in the conversation that started authorization.'
+      : 'X account connected. Return to OpenClaw; if the conversation has no notice, run x_account_me to verify the connection.');
 }
 
-function findPendingAccount(pluginConfig: OAuthPluginConfig, receivedState: string): string | undefined {
+type PendingOAuth = NonNullable<NonNullable<ReturnType<typeof getSession>>['pendingOAuth']>;
+
+function findPendingAccount(pluginConfig: OAuthPluginConfig, receivedState: string): { accountId: string; pending: PendingOAuth } | undefined {
   const accountIds = new Set(['default', ...Object.keys(pluginConfig.accounts ?? {})]);
-  const matches: string[] = [];
+  const matches: Array<{ accountId: string; pending: PendingOAuth }> = [];
 
   for (const accountId of accountIds) {
     const config = loadAccountConfig(pluginConfig, accountId);
@@ -88,11 +113,25 @@ function findPendingAccount(pluginConfig: OAuthPluginConfig, receivedState: stri
       isPendingOAuthFresh(pending.createdAt) &&
       oauthStateMatches(pending.state, receivedState)
     ) {
-      matches.push(accountId);
+      matches.push({ accountId, pending });
     }
   }
 
   return matches.length === 1 ? matches[0] : undefined;
+}
+
+async function notifyOrigin(
+  options: OAuthCallbackOptions,
+  sessionKey: string | undefined,
+  message: string,
+  state: string,
+): Promise<'announced' | 'queued' | 'unavailable'> {
+  if (!sessionKey || !options.notifyOrigin) return 'unavailable';
+  try {
+    return await options.notifyOrigin(sessionKey, message, `x-oauth:${state}`);
+  } catch {
+    return 'unavailable';
+  }
 }
 
 function callbackPathMatches(redirectUri: string): boolean {

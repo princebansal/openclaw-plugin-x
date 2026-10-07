@@ -4,6 +4,7 @@ Use this before any public npm/plugin-manifest/ClawHub-style release.
 
 ## 1. Metadata and packaging
 - [ ] `package.json` version is intentional
+- [ ] `package.json` build and plugin SDK target matches the intended OpenClaw release; retain minimum compatible API unless raising it is intentional
 - [ ] `package.json` description matches actual capabilities
 - [ ] packaged files include `dist`, manifests, `README.md`, `env.example`, and `LICENSE`
 - [ ] `openclaw.plugin.json` version matches `package.json`
@@ -25,8 +26,11 @@ Use this before any public npm/plugin-manifest/ClawHub-style release.
 
 ## 4. Auth validation
 - [ ] `x_account_connect` reports an honest readiness plan
-- [ ] `x_account_auth_url` returns a usable auth URL
-- [ ] `x_account_complete` succeeds via auth code or redirect URL
+- [ ] Register the exact OAuth redirect URI used by the plugin in the X Developer Portal app
+- [ ] `x_account_auth_url` returns a usable auth URL for both `callback` and `paste_back` modes
+- [ ] Callback mode completes automatically and reports to the originating OpenClaw conversation
+- [ ] Paste-back mode completes through `x_account_complete` using the returned code or redirect URL
+- [ ] Confirm the registration requirement applies to both modes; only callback mode requires the Gateway callback to be reachable
 - [ ] refreshed session persists to the configured session store
 - [ ] for every non-default account, `x_account_me({ accountId })` returns the expected X username before publish
 
@@ -58,6 +62,7 @@ Use this before any public npm/plugin-manifest/ClawHub-style release.
 
 ## 8. Honesty check before release
 - [ ] README documents the OAuth callback's state, account-binding, expiry, and public-route security behavior
+- [ ] README, plugin setup metadata, and X Management skill all say the redirect URI must be registered for either OAuth mode
 - [ ] README does not imply live engagement actions exist
 - [ ] README describes thread publish honestly and does not overstate its validation level
 - [ ] README describes multi-account `accountId` behavior and account-bound drafts honestly

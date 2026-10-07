@@ -38,13 +38,38 @@ type PluginEntryDefinition = {
   configSchema: typeof pluginConfigSchema;
   register: (api: {
     pluginConfig?: unknown;
+    session?: {
+      workflow?: {
+        scheduleSessionTurn?: (params: {
+          sessionKey: string;
+          message: string;
+          delayMs: number;
+          deliveryMode: 'announce';
+          deleteAfterRun: true;
+          name: string;
+          tag: string;
+        }) => Promise<unknown>;
+        enqueueNextTurnInjection?: (params: {
+          sessionKey: string;
+          text: string;
+          ttlMs?: number;
+          idempotencyKey?: string;
+        }) => Promise<unknown>;
+      };
+    };
     registerTool: (tool: {
       name: string;
       label: string;
       description: string;
       parameters: object;
       execute: (toolCallId: string, params: Record<string, unknown>) => Promise<{ content: { type: 'text'; text: string }[]; details: unknown }>;
-      }, metadata?: { name?: string }) => void;
+      } | ((ctx: { sessionKey?: string }) => {
+        name: string;
+        label: string;
+        description: string;
+        parameters: object;
+        execute: (toolCallId: string, params: Record<string, unknown>) => Promise<{ content: { type: 'text'; text: string }[]; details: unknown }>;
+      }), metadata?: { name?: string }) => void;
     registerHttpRoute?: (route: {
       path: string;
       auth: 'plugin';
@@ -107,7 +132,10 @@ const pluginConfigSchema = {
   uiHints: {
     clientId: { label: 'X Client ID' },
     [CLIENT_SECRET_CONFIG_FIELD]: { label: 'X Client Secret', sensitive: true },
-    redirectUri: { label: 'OAuth Redirect URI' },
+    redirectUri: {
+      label: 'OAuth Redirect URI',
+      description: 'Must exactly match a redirect URI registered in your X Developer Portal app for both callback and paste-back OAuth modes.',
+    },
     [BEARER_CONFIG_FIELD]: { label: 'X Bearer Token', sensitive: true, advanced: true },
     [ACCESS_CONFIG_FIELD]: { label: 'X Access Token', sensitive: true, advanced: true },
     [REFRESH_CONFIG_FIELD]: { label: 'X Refresh Token', sensitive: true, advanced: true },
@@ -151,7 +179,37 @@ export default definePluginEntry({
       path: OAUTH_CALLBACK_PATH,
       auth: 'plugin',
       match: 'exact',
-      handler: (request, response) => handleOAuthCallbackRequest(request, response, pluginConfig),
+      handler: (request, response) => handleOAuthCallbackRequest(request, response, pluginConfig, {
+        notifyOrigin: async (sessionKey, message, idempotencyKey) => {
+          const workflow = api.session?.workflow;
+          try {
+            const scheduled = await workflow?.scheduleSessionTurn?.({
+              sessionKey,
+              message,
+              delayMs: 1000,
+              deliveryMode: 'announce',
+              deleteAfterRun: true,
+              name: 'X OAuth result',
+              tag: 'x-oauth-result',
+            });
+            if (scheduled) return 'announced';
+          } catch {
+            // Fall back to a persisted next-turn notice below.
+          }
+          try {
+            const queued = await workflow?.enqueueNextTurnInjection?.({
+              sessionKey,
+              text: message,
+              ttlMs: 24 * 60 * 60 * 1000,
+              idempotencyKey,
+            });
+            if (queued && typeof queued === 'object' && 'enqueued' in queued && queued.enqueued === true) return 'queued';
+          } catch {
+            // The browser result remains available even if the source session is gone.
+          }
+          return 'unavailable';
+        },
+      }),
     });
 
     const registerTool = (tool: {
@@ -180,13 +238,22 @@ export default definePluginEntry({
       execute: (params) => executeAction('x.account.connect', { ...params }, pluginConfig),
     });
 
-    registerTool({
+    api.registerTool((ctx) => ({
       name: 'x_account_auth_url',
       label: 'X Account Auth URL',
-      description: 'Generate an OAuth PKCE authorization URL for connecting an X account.',
-      parameters: Type.Object({ ...accountIdParameter }, { additionalProperties: false }),
-      execute: (params) => executeAction('x.account.auth_url', { ...params }, pluginConfig),
-    });
+      description: 'Generate an OAuth PKCE authorization URL. Choose mode=callback for automatic completion and a conversation notice, or mode=paste_back to finish by pasting the redirect URL/code into x_account_complete. OAuth 2.0 still requires the redirect URI to be registered in the X app.',
+      parameters: Type.Object({
+        ...accountIdParameter,
+        mode: Type.Union([
+          Type.Literal('callback', { description: 'Gateway completes authorization automatically and reports back to this OpenClaw conversation.' }),
+          Type.Literal('paste_back', { description: 'User pastes the redirect URL or code into x_account_complete; the Gateway callback does not exchange it.' }),
+        ]),
+      }, { additionalProperties: false }),
+      execute: (_toolCallId, params) => executeAction('x.account.auth_url', {
+        ...params,
+        ...(ctx.sessionKey ? { _originSessionKey: ctx.sessionKey } : {}),
+      }, pluginConfig),
+    }), { name: 'x_account_auth_url' });
 
     registerTool({
       name: 'x_account_complete',

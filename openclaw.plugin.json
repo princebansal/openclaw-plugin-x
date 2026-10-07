@@ -2,14 +2,14 @@
   "id": "openclaw-plugin-x",
   "name": "OpenClaw X Plugin",
   "description": "OpenClaw plugin for X/Twitter with OAuth account connection, authenticated reads (including followers), durable drafts, approval-gated publish, and local session/draft persistence.",
-  "version": "0.2.17",
+  "version": "0.2.18",
   "setup": {
     "summary": "Requires your own X developer app credentials. Stores OAuth session state and drafts on the local machine.",
     "steps": [
-      "Set X clientId and redirectUri, plus clientSecret for OAuth token exchange.",
+      "Set X clientId and redirectUri, plus clientSecret for OAuth token exchange. Register the exact redirectUri in the X Developer Portal app for both callback and paste-back OAuth modes.",
       "Use stable local state paths for sessionFilePath and draftsFilePath, outside the plugin install directory.",
       "For multiple accounts, pass accountId to tools and optionally configure per-account overrides under accounts.",
-      "Connect the account with x_account_auth_url; use the Gateway OAuth callback or x_account_complete manual fallback before authenticated reads or publish tools.",
+      "Connect with x_account_auth_url and choose callback or paste_back mode. X requires the exact redirectUri to be registered for either mode; callback mode additionally requires the Gateway callback to be browser-reachable. Paste-back completes through x_account_complete.",
       "Follower-list reads require the OAuth scope follows.read; older sessions must reconnect after upgrading."
     ],
     "providers": [
@@ -131,7 +131,8 @@
     },
     "redirectUri": {
       "label": "OAuth Redirect URI",
-      "required": true
+      "required": true,
+      "description": "Must exactly match a redirect URI registered in your X Developer Portal app for both callback and paste-back modes."
     },
     "oauthAuthorizeUrl": {
       "label": "OAuth Authorization Endpoint",
@@ -210,7 +211,7 @@
       },
       "redirectUri": {
         "type": "string",
-        "description": "OAuth redirect URI registered with the X app."
+        "description": "OAuth redirect URI; it must exactly match a URI registered with the X Developer Portal app for both callback and paste-back modes."
       },
       "bearerToken": {
         "type": "string",

@@ -32,17 +32,17 @@ export function buildConnectPlan(config: AccountConfig) {
       token: config.oauthTokenUrl,
     },
     note:
-      'OAuth uses a durable PKCE session. When redirectUri reaches the Gateway callback route, completion is automatic; manual code/redirect completion remains available as a fallback.',
+      'OAuth uses a durable PKCE session. Choose automatic Gateway callback completion or manual paste-back when starting authorization. X OAuth 2.0 requires the redirect URI to be registered on the app in either mode.',
     nextSteps:
       mode === 'token-config-bringup'
         ? [
             'Use X_BEARER_TOKEN or X_ACCESS_TOKEN for immediate read-path testing.',
             'Use X_ACCESS_TOKEN for live write-path testing.',
-            'Use x_account_auth_url for PKCE OAuth and the Gateway callback route for automatic completion.',
+            'Use x_account_auth_url and choose callback or paste_back mode for PKCE OAuth.',
           ]
         : [
             'Provide X_CLIENT_ID / X_REDIRECT_URI for OAuth 2.0 user flow.',
-            'Generate a PKCE auth URL and complete through the Gateway callback or manual code exchange.',
+            'Generate a PKCE auth URL and choose callback or paste_back completion.',
             'Persist access/refresh token session in the plugin session store.',
           ],
   };
@@ -70,7 +70,10 @@ export function isPendingOAuthFresh(createdAt: string, now = Date.now()): boolea
   return Number.isFinite(createdAtMs) && ageMs >= -60_000 && ageMs <= 10 * 60_000;
 }
 
-export function buildAuthorizationUrl(config: AccountConfig): PendingOAuthState {
+export function buildAuthorizationUrl(
+  config: AccountConfig,
+  options: { mode?: 'callback' | 'paste_back'; originSessionKey?: string } = {},
+): PendingOAuthState {
   if (!config.clientId || !config.redirectUri) {
     throw new XPluginError('CONFIG_ERROR', 'OAuth auth URL generation requires clientId and redirectUri.');
   }
@@ -97,6 +100,8 @@ export function buildAuthorizationUrl(config: AccountConfig): PendingOAuthState 
     createdAt,
     redirectUri: config.redirectUri,
     scopes,
+    mode: options.mode ?? 'callback',
+    ...(options.originSessionKey ? { originSessionKey: options.originSessionKey } : {}),
   };
 }
 

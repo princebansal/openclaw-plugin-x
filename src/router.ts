@@ -52,10 +52,21 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
       }
       case 'x.account.auth_url': {
         assertOAuthConfigPresent(config);
-        const automaticCallbackConfigured = config.redirectUri
+        const input = request.input as { mode?: 'callback' | 'paste_back'; _originSessionKey?: string };
+        const mode = input.mode ?? 'callback';
+        if (mode !== 'callback' && mode !== 'paste_back') {
+          throw new XPluginError('VALIDATION_ERROR', 'mode must be callback or paste_back.');
+        }
+        const gatewayCallbackConfigured = config.redirectUri
           ? new URL(config.redirectUri).pathname === OAUTH_CALLBACK_PATH
           : false;
-        const pending = buildAuthorizationUrl(config);
+        if (mode === 'callback' && !gatewayCallbackConfigured) {
+          throw new XPluginError('CONFIG_ERROR', 'Callback mode requires redirectUri to use the OpenClaw X OAuth callback path. Choose paste_back or configure the callback redirect URI.');
+        }
+        const pending = buildAuthorizationUrl(config, {
+          mode,
+          ...(mode === 'callback' && input._originSessionKey ? { originSessionKey: input._originSessionKey } : {}),
+        });
         const existing = session ?? { accountId, scopes: [] };
         const stored = setSession(config.sessionFilePath, {
           ...existing,
@@ -66,12 +77,13 @@ export async function routeToolRequest(request: ToolRequest): Promise<ToolRespon
           accountId,
           authorizeUrl: pending.authorizeUrl,
           state: pending.state,
+          mode,
           redirectUri: pending.redirectUri,
           scopes: pending.scopes,
           session: redactSession(stored),
-        }, true, [automaticCallbackConfigured
-          ? 'Open this URL and approve the app; the configured OpenClaw callback route will complete the connection automatically. If the Gateway callback is unreachable, use x_account_complete with the returned code or full redirect URL.'
-          : 'Open this URL and approve the app, then use x_account_complete with the returned code or full redirect URL. For automatic completion, configure redirectUri to the OpenClaw callback path.']);
+        }, true, [mode === 'callback'
+          ? 'Open this URL and approve the app. The Gateway callback will complete the connection and announce the result in the conversation that started authorization.'
+          : 'Open this URL and approve the app, then paste the full redirect URL or code into x_account_complete. This mode does not rely on the Gateway callback route completing the exchange. X still requires the redirect URI to be registered on the app.']);
       }
       case 'x.account.complete': {
         const input = request.input as { code?: string; redirectUrl?: string; state?: string; _oauthCallback?: boolean };
@@ -801,6 +813,7 @@ function redactSession(session?: ReturnType<typeof getSession>) {
         createdAt: pendingOAuth.createdAt,
         redirectUri: pendingOAuth.redirectUri,
         scopes: pendingOAuth.scopes,
+        mode: pendingOAuth.mode ?? 'callback',
       },
     } : {}),
   };

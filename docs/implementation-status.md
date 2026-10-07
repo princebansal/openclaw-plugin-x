@@ -1,6 +1,6 @@
 # Implementation Status
 
-Last updated: 2026-10-02
+Last updated: 2026-10-08
 
 ## Proven working
 - `npm run check` passes.
@@ -8,6 +8,8 @@ Last updated: 2026-10-02
 - Native OpenClaw plugin entrypoint exists in `src/plugin-entry.ts`.
 - Durable local session persistence exists for OAuth state/tokens.
 - OAuth auth URL generation, automatic Gateway callback completion, manual fallback completion, and refresh handling are implemented.
+- OAuth authorization requires an explicit `callback` or `paste_back` choice. Both modes use a redirect URI registered on the X Developer Portal app; only callback mode depends on the Gateway receiving the redirect.
+- OpenClaw 2026.9.8 loaded the local plugin runtime. Live callback and paste-back OAuth each completed in separate temporary account slots and `x_account_me` verified @princewillfix; no posts or media were sent.
 - Read tools are working for:
   - `x.account.me`
   - `x.followers.list` (with `follows.read` in the connected OAuth scope set)

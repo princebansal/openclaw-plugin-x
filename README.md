@@ -10,6 +10,13 @@ Source: [GitHub repository](https://github.com/princebansal/openclaw-plugin-x)
 
 ## Release notes
 
+### 0.2.18
+- Let the user choose automatic Gateway callback or manual paste-back when starting OAuth.
+- For automatic callback mode, announce the result through OpenClaw's originating session workflow API; no channel-specific transport is used.
+- Keep manual completion independent of callback exchange. X OAuth 2.0 still requires its redirect URI to be registered in the Developer Portal; paste-back avoids depending on a reachable Gateway callback listener, not redirect-URI registration.
+- Refresh the declared build and plugin SDK target to OpenClaw 2026.9.8 while retaining minimum Gateway/plugin API compatibility at 2026.5.28.
+- Verify both OAuth modes live on OpenClaw 2026.9.8 using isolated temporary account slots; no posts or media were sent.
+
 ### 0.2.17
 - Add an OpenClaw Gateway OAuth callback route with PKCE state validation, account-bound matching, a ten-minute expiry, and one-time callback claiming; keep manual completion as a fallback.
 - Declare the callback route through the supported `registerHttpRoute` API and align OAuth endpoint/scope config metadata with the runtime schema.
@@ -32,7 +39,7 @@ Source: [GitHub repository](https://github.com/princebansal/openclaw-plugin-x)
 - No runtime behavior changes.
 
 This package has been proven locally for the core draft-first workflow:
-- OAuth PKCE connect flow with automatic Gateway callback and manual code/redirect fallback
+- OAuth PKCE connect flow with a user-selected automatic Gateway callback or manual code/redirect paste-back mode
 - authenticated reads
 - follower-list reads
 - account-scoped recent search and user timeline search
@@ -47,7 +54,7 @@ It is **real**, but it is **not fully productized** yet. The main remaining gaps
 ## Current status
 
 ### Proven working locally
-- OAuth auth URL generation, PKCE callback handling, and manual completion fallback
+- OAuth auth URL generation, PKCE callback handling, and selectable manual paste-back completion
 - session persistence and token refresh handling
 - `x_account_me`
 - `x_followers_list`
@@ -84,13 +91,13 @@ This plugin is intentionally draft-first:
 Approval remains mandatory by design.
 
 ## Requirements
-- OpenClaw 2026.9.7 host runtime: Node.js 24.16.0+ on Node 24, or 26.1.0+.
+- OpenClaw 2026.9.8 host runtime: Node.js 24.16.0+ on Node 24, or 26.1.0+.
 - The plugin package itself declares Node.js 22+ in `engines`; the host's runtime requirement takes precedence when running inside OpenClaw.
 - OpenClaw version compatible with the package metadata in `package.json`
 - Your own X developer app credentials for OAuth-based account access
 
 ### OpenClaw compatibility
-This source release targets OpenClaw 2026.9.7 and declares that build/API baseline in `package.json`. Its minimum compatible Gateway/plugin API remains 2026.5.28. This is a compatibility declaration, not proof of every runtime path: run the package validator and a clean packed-install/load check against the target OpenClaw release before publishing. OpenClaw's plugin APIs are experimental, so re-check them when adopting a newer host release.
+This source release targets OpenClaw 2026.9.8 and declares that build/API baseline in `package.json`. Its minimum compatible Gateway/plugin API remains 2026.5.28. The current Gateway (2026.9.8) loaded the plugin, and both callback and paste-back OAuth flows were verified live. ClawHub runtime validation passed for 2026.9.8; the packed archive was installed in an isolated directory and its plugin entry, config schema, OAuth tools, and callback route loaded successfully. OpenClaw's plugin APIs are experimental, so re-check them when adopting a newer host release.
 
 Important: this plugin is generic, but OAuth is not shared. Each user installing the plugin should configure their own X developer app credentials. The auth URL is generated from the credentials configured in that user's OpenClaw runtime, not from a generic shared app.
 
@@ -127,10 +134,14 @@ Before public publication, do one more install/load validation from the packed a
 2. Build the plugin.
 3. Configure/load it in OpenClaw.
 4. Run `x_account_connect` to inspect readiness.
-5. Start OAuth with `x_account_auth_url` and approve the app in your browser.
-6. When the registered redirect URI reaches this Gateway's callback route, the plugin completes OAuth automatically. If the Gateway cannot be reached from the browser, use `x_account_complete` with the returned code or full redirect URL.
+5. Start OAuth with `x_account_auth_url` and choose one of two modes:
+   - `callback`: approve in the browser; OpenClaw completes the exchange automatically and announces the result in the conversation that started authorization.
+   - `paste_back`: approve in the browser, then paste the full redirect URL or code into `x_account_complete`.
+6. X OAuth 2.0 requires the redirect URI in the authorization request to be registered on the X app. Paste-back does not depend on the Gateway callback route completing the exchange, but it does not bypass X's redirect-URI registration requirement.
 
-For automatic completion, register an externally reachable Gateway URL ending in `/openclaw-plugin-x/oauth/callback` as the X app callback URL, then set the exact same URL as `redirectUri`. The callback accepts GET requests, requires the unexpired PKCE state created for that exact account, claims it once, and returns a static page without echoing OAuth parameters. The callback route is public (`auth: "plugin"`) by design because the X redirect cannot carry Gateway credentials; the unguessable, short-lived OAuth state is the admission check.
+For callback mode, register a Gateway URL ending in `/openclaw-plugin-x/oauth/callback` as the X app callback URL, then set the exact same URL as `redirectUri`. The callback accepts GET requests, requires the unexpired PKCE state created for that exact account, claims it once, and returns a static page without echoing OAuth parameters. The callback route is public (`auth: "plugin"`) by design because the X redirect cannot carry Gateway credentials; the unguessable, short-lived OAuth state is the admission check. On completion, the plugin schedules a channel-agnostic announcement back to the session that initiated authorization. If OpenClaw cannot reach that session, the browser page says so and the connection can be checked with `x_account_me`.
+
+In `paste_back` mode, the plugin does not exchange an OAuth callback automatically. If the browser redirects to the Gateway route, it displays instructions to paste the redirect URL or code into the originating OpenClaw conversation and call `x_account_complete`. If the callback is unreachable, paste the final URL/code from the browser address bar.
 
 ### Example env bring-up
 ```bash

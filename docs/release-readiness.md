@@ -17,12 +17,14 @@ This is a practical release-readiness assessment for `openclaw-plugin-x`, based 
 - secret audit found no concrete credential values in the repo
 - ClawHub package validation/source linking succeeds
 - multi-account OAuth and account-bound draft/publish flow has been proven live
+- callback and paste-back OAuth both completed live on OpenClaw 2026.9.8 in separate temporary account slots
+- packed ClawPack archive installed in an isolated directory; plugin entry, config schema, OAuth tools, and callback route loaded successfully
 
 ### Should fix or validate before public plugin release
-- perform a true install/load validation from packed artifact or equivalent installable source
-- confirm OpenClaw discovers and loads the plugin cleanly outside the source-tree dev path
-- confirm config schema renders/loads correctly in a real install path
-- confirm at least one tool call succeeds after that install
+- confirm OpenClaw discovers and loads the plugin cleanly outside the source-tree dev path (isolated package-entry loading passed; full Gateway discovery remains a separate validation)
+- confirm config schema renders/loads correctly in a real Gateway install path (isolated schema parse passed)
+- confirm at least one tool call succeeds after that install (live source-tree runtime already passed OAuth/account verification)
+- validate the package against OpenClaw 2026.9.8 and inspect the packed artifact for the OAuth mode schema/docs
 - confirm `openclaw.plugin.json` version matches `package.json`
 - confirm `plugin.manifest.json` version matches `package.json`
 - monitor ClawHub package scan completion after publish
@@ -48,11 +50,11 @@ This is a practical release-readiness assessment for `openclaw-plugin-x`, based 
 - [x] `npm run check`
 - [x] build artifacts exist
 - [x] ClawPack artifact publish validation
-- [ ] packed-artifact install/load validation
-- [ ] real post-install tool smoke test in install context
+- [x] packed-artifact install/load smoke in isolated directory (entry, schema, OAuth tools, callback route)
+- [ ] real post-install Gateway discovery and tool smoke test in install context
 
 ### Runtime honesty
-- [x] README documents automatic OAuth callback handling and manual fallback
+- [x] README documents the selectable OAuth callback and paste-back modes, including X redirect-URI registration for both
 - [x] README states engagement actions are not live
 - [x] README states thread publish is implemented for approved thread drafts
 - [x] README frames the plugin as real but not fully productized

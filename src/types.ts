@@ -92,6 +92,8 @@ export interface PendingOAuthState {
   createdAt: string;
   redirectUri: string;
   scopes: string[];
+  mode?: 'callback' | 'paste_back' | undefined;
+  originSessionKey?: string | undefined;
 }
 
 export interface OAuthTokenResponse {

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "openclaw-plugin-x",
   "name": "OpenClaw X Plugin",
-  "version": "0.2.17",
+  "version": "0.2.18",
   "description": "Tool-oriented OpenClaw plugin for X/Twitter account management with OAuth, authenticated reads (including followers), approval-gated publish, and local session/draft persistence.",
   "entry": "dist/plugin-entry.js",
   "tools": [
@@ -30,10 +30,11 @@
     "x.util.resolve_url"
   ],
   "notes": [
-    "Requires user-supplied X app credentials: clientId, clientSecret, and redirectUri for OAuth-based account connection.",
+    "Requires user-supplied X app credentials: clientId, clientSecret, and redirectUri for OAuth-based account connection. Register the exact redirectUri on the X Developer Portal app for both callback and paste-back modes.",
     "Stores session state and draft records in local JSON files; configure stable paths outside the plugin install directory.",
     "Supports multiple X accounts through explicit accountId tool parameters and optional config.accounts account overrides.",
-    "OAuth supports automatic completion through the Gateway callback route with manual completion as fallback.",
+    "OAuth offers callback and paste-back completion modes. Both require a redirect URI registered on the X Developer Portal app; only callback mode depends on the Gateway receiving the redirect.",
+    "Build and plugin SDK compatibility target: OpenClaw 2026.9.8; minimum Gateway/plugin API compatibility remains 2026.5.28.",
     "Follower-list reads require follows.read in the connected OAuth scope set; older sessions created before that scope was added must reconnect.",
     "Draft creation and approval are dry-run-safe; x.post.publish performs a real X write when invoked with a valid approved draft and user token."
   ],

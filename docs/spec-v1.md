@@ -70,6 +70,7 @@ Use OpenClaw plugin config for:
 - client id
 - client secret
 - redirect uri
+- the exact redirect URI must be registered on the X Developer Portal app for both OAuth completion modes
 - api base url
 - approval mode
 - optional per-account overrides under `accounts`
@@ -91,6 +92,11 @@ For OAuth and runtime handoff work:
 - short-lived callback context
 
 ## UX model
+### OAuth connection
+- X OAuth 2.0 requires the exact `redirectUri` sent in the authorization request to be registered on the X Developer Portal app, regardless of completion mode.
+- At authorization start, let the user choose automatic Gateway callback completion or manual paste-back through `x_account_complete`.
+- Callback mode additionally requires the registered Gateway callback URL to be reachable from the browser. Paste-back avoids relying on the Gateway callback handler to exchange the code; it does not remove X's redirect-URI registration requirement.
+
 ### Draft flow
 1. agent gathers context
 2. agent creates draft via plugin tool
