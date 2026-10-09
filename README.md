@@ -10,6 +10,9 @@ Source: [GitHub repository](https://github.com/princebansal/openclaw-plugin-x)
 
 ## Release notes
 
+### 0.2.19
+- Remove the unsupported `contracts.tools` declaration from the native plugin manifest; runtime tool registrations are unchanged.
+
 ### 0.2.18
 - Let the user choose automatic Gateway callback or manual paste-back when starting OAuth.
 - For automatic callback mode, announce the result through OpenClaw's originating session workflow API; no channel-specific transport is used.
